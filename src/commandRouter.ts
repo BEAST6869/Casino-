@@ -2,6 +2,7 @@
 import { Client, Message } from "discord.js";
 import { handleHelp } from "./commands/general/help";
 import { handleSetPrefix } from "./commands/admin/setPrefix";
+import { handleSetIncome } from "./commands/admin/setIncome";
 
 
 // economy
@@ -46,6 +47,9 @@ export async function routeMessage(client: Client, message: Message) {
   switch (normalized) {
     case "help":
       return handleHelp(message);
+
+    case "setincome": 
+      return handleSetIncome(message, args);
 
     case "setprefix":
       return handleSetPrefix(message, args);

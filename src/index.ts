@@ -2,10 +2,19 @@
 import "dotenv/config";
 import fs from "fs";
 import path from "path";
-import { Client, GatewayIntentBits, Partials, REST, Routes } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  Partials,
+  REST,
+  Routes,
+  ChatInputCommandInteraction,
+  Interaction
+} from "discord.js";
 import prisma from "./utils/prisma";
 import { routeMessage } from "./commandRouter";
 import { getGuildConfig } from "./services/guildConfigService";
+import { safeInteractionReply } from "./utils/interactionHelpers";
 
 // --- load slash commands automatically from src/commands/slash ---
 const slashCommands = new Map<string, any>();
@@ -79,25 +88,25 @@ client.once("ready", async () => {
 });
 
 // interaction (slash) handler
-client.on("interactionCreate", async (interaction) => {
+client.on("interactionCreate", async (interaction: Interaction) => {
   try {
-    if (!interaction.isChatInputCommand()) return;
+    // Only handle chat input (slash) commands here
+    if (!interaction.isChatInputCommand?.()) return;
 
-    const cmd = slashCommands.get(interaction.commandName);
-    if (!cmd) {
-      return interaction.reply({ content: "Unknown command.", ephemeral: true });
+    // Narrow for TypeScript
+    const ci = interaction as ChatInputCommandInteraction;
+
+    const module = slashCommands.get(ci.commandName);
+    if (!module) {
+      // Use the chat-input interaction to reply
+      return ci.reply({ content: "Unknown command.", ephemeral: true });
     }
 
-    await cmd.execute(interaction);
+    await module.execute(ci);
   } catch (err) {
     console.error("Slash interaction error:", err);
-    try {
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: "Internal error while running command.", ephemeral: true });
-      } else {
-        await interaction.reply({ content: "Internal error while running command.", ephemeral: true });
-      }
-    } catch {}
+    // Use safe helper that handles all interaction types
+    await safeInteractionReply(interaction, { content: "Internal error while running command.", ephemeral: true });
   }
 });
 
@@ -131,7 +140,9 @@ client.on("messageCreate", async (message) => {
     console.error("Message handler error:", err);
     try {
       await message.reply("An internal error occurred while processing your command.");
-    } catch {}
+    } catch (replyErr) {
+      console.error("Failed to notify user about message handler error:", replyErr);
+    }
   }
 });
 

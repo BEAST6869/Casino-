@@ -117,18 +117,26 @@ model Bank {
   updatedAt DateTime @updatedAt
 }
 
-model incomeConfig {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  guildId    String
-  commandKey String
-  minPay     Int
-  maxPay     Int
-  cooldown   Int
-  successPct Int?
-  createdAt  DateTime @default(now())
+model IncomeConfig {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId      String
+  commandKey   String   // work, crime, beg, slut
+
+  minPay       Int
+  maxPay       Int
+  cooldown     Int      // seconds
+
+  // success percentage (0-100). For commands that never fail, set 100.
+  successPct   Int?     @default(100)
+
+  // On failure, penalty = Math.floor(amount * failPenaltyPct / 100)
+  failPenaltyPct Int?   @default(50)
+
+  createdAt    DateTime @default(now())
 
   @@unique([guildId, commandKey])
 }
+
 
 model GuildConfig {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
