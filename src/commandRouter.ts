@@ -1,6 +1,8 @@
 // src/commandRouter.ts
 import { Client, Message } from "discord.js";
 import { handleHelp } from "./commands/general/help";
+import { handleSetPrefix } from "./commands/admin/setPrefix";
+
 
 // economy
 import { handleBalance } from "./commands/economy/balance";
@@ -44,6 +46,10 @@ export async function routeMessage(client: Client, message: Message) {
   switch (normalized) {
     case "help":
       return handleHelp(message);
+
+    case "setprefix":
+      return handleSetPrefix(message, args);
+
 
     // ----------------
     // Economy / User

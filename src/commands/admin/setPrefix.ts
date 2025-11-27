@@ -1,0 +1,34 @@
+// src/commands/admin/setPrefix.ts
+import { Message } from "discord.js";
+import { updateGuildConfig } from "../../services/guildConfigService";
+import { successEmbed, errorEmbed } from "../../utils/embed";
+
+export async function handleSetPrefix(message: Message, args: string[]) {
+  try {
+    if (!message.member?.permissions.has("Administrator")) {
+      return message.reply({
+        embeds: [errorEmbed(message.author, "No Permission", "Admins only.")]
+      });
+    }
+
+    const newPrefix = args[0];
+
+    if (!newPrefix || newPrefix.length > 3) {
+      return message.reply({
+        embeds: [errorEmbed(message.author, "Invalid Prefix", "Usage: `!setprefix <symbol>` (max 3 chars)")]
+      });
+    }
+
+    await updateGuildConfig(message.guildId!, { prefix: newPrefix });
+
+    return message.reply({
+      embeds: [successEmbed(message.author, "Prefix Updated", `New prefix set to **${newPrefix}**`)]
+    });
+
+  } catch (err) {
+    console.error("handleSetPrefix error:", err);
+    return message.reply({
+      embeds: [errorEmbed(message.author, "Internal Error", "Failed to set prefix.")]
+    });
+  }
+}
