@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Models adapted for MongoDB (ObjectId fields).
+// Note: For one-to-one between User <-> Wallet, the relation fields are defined
+// only on the Wallet side (userId). The User side just references Wallet.
+
+model User {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  discordId String @unique
+  username  String
+
+  wallet Wallet?
+  bank   Bank? // <-- inverse relation field (optional)
+
+  bets Bet[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Wallet {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  user         User          @relation(fields: [userId], references: [id])
+  userId       String        @unique @db.ObjectId
+  balance      Int           @default(0)
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Transaction {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  walletId  String   @db.ObjectId
+  amount    Int
+  type      String   // e.g.: income, admin_add, wallet_to_bank, bank_to_wallet, bet, payout, transfer_sent, transfer_recv
+  meta      Json?
+  isEarned  Boolean? @default(false) // <--- NEW: true for income-like txns
+  createdAt DateTime @default(now())
+}
+
+model GameSession {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  type      String // e.g. "roulette", "slots", "blackjack"
+  bets      Bet[]
+  createdAt DateTime @default(now())
+}
+
+model Bet {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  user      User        @relation(fields: [userId], references: [id])
+  userId    String      @db.ObjectId
+  game      GameSession @relation(fields: [gameId], references: [id])
+  gameId    String      @db.ObjectId
+  amount    Int
+  choice    String?
+  result    String?
+  payout    Int?
+  createdAt DateTime    @default(now())
+}
+
+model RoleIncome {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  guildId   String
+  roleId    String
+  amount    Int // amount given per claim
+  interval  Int // seconds between claims
+  lastClaim DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Job {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  guildId     String
+  key         String @unique
+  name        String
+  minPay      Int
+  maxPay      Int
+  successRate Float? // optional chance param for extras
+  cooldown    Int
+}
+
+model ShopItem {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId      String
+  name         String
+  price        Int
+  stock        Int? // null = unlimited
+  actions      Json? // actions to execute on buy/use (role grant, balance edit, etc)
+  requirements Json? // role required, balance required, item required
+  createdAt    DateTime @default(now())
+}
+
+model Audit {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId   String?
+  userId    String?
+  type      String // 'transfer','admin_add','bet','payout','item_buy'...
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+model Bank {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @unique @db.ObjectId
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model incomeConfig {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId    String
+  commandKey String
+  minPay     Int
+  maxPay     Int
+  cooldown   Int
+  successPct Int?
+  createdAt  DateTime @default(now())
+
+  @@unique([guildId, commandKey])
+}
+
+model GuildConfig {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId       String   @unique
+  currencyName  String   @default("Coins")
+  startMoney    Int      @default(1000)
+  transferTax   Int      @default(0)
+  incomeTax     Int      @default(0)
+  bankLimit     Int?     @default(1000000)
+  interestRate  Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+

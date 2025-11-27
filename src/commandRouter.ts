@@ -1,0 +1,108 @@
+// src/commandRouter.ts
+import { Client, Message } from "discord.js";
+import { handleHelp } from "./commands/general/help";
+
+// economy
+import { handleBalance } from "./commands/economy/balance";
+import { handleDeposit } from "./commands/economy/deposit";
+import { handleWithdrawBank } from "./commands/economy/withdrawBank";
+import { handleTransfer } from "./commands/economy/transfer";
+import { handleIncome } from "./commands/economy/incomeCommands";
+
+
+// admin
+import { handleAddMoney } from "./commands/admin/addMoney";
+import { handleSetStartMoney } from "./commands/admin/setStartMoney";
+import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
+import { handleResetEconomy } from "./commands/admin/resetEconomy";
+import { handleSetCurrency } from "./commands/admin/setCurrency";
+import { handleAdminViewConfig } from "./commands/admin/viewConfig";
+
+// games
+import { handleBet } from "./commands/games/roulette";
+
+export async function routeMessage(client: Client, message: Message) {
+  const raw = message.content.slice(1).trim();
+  const [cmd, ...args] = raw.split(/\s+/);
+  const command = cmd.toLowerCase();
+
+  // Aliases mapping
+  const normalized = ((
+    {
+      dep: "deposit",
+      depo: "deposit",
+      bal: "balance",
+      b: "balance",
+      with: "withdraw",
+      wd: "withdraw",
+      add: "addmoney",
+      adminadd: "addmoney",
+      "setstart": "setstartmoney"
+    } as Record<string, string>
+  )[command] ?? command);
+
+  switch (normalized) {
+    case "help":
+      return handleHelp(message);
+
+    // ----------------
+    // Economy / User
+    // ----------------
+    case "balance":
+      return handleBalance(message);
+
+    case "deposit":
+      return handleDeposit(message, args);
+
+    case "withdraw":
+      return handleWithdrawBank(message, args);
+
+    case "transfer":
+      return handleTransfer(message, args);
+
+    // Income commands (work/crime/beg/slut)
+    case "work":
+    case "crime":
+    case "beg":
+    case "slut":
+      return handleIncome(message);
+
+    // ----------------
+    // Games
+    // ----------------
+    case "bet":
+      return handleBet(message, args);
+
+    // ----------------
+    // Admin
+    // ----------------
+    case "addmoney":
+    case "adminadd":
+      return handleAddMoney(message, args);
+
+    case "setstartmoney":
+    case "setstart":
+      return handleSetStartMoney(message, args);
+
+    case "setincomecooldown":
+      return handleSetIncomeCooldown(message, args);
+
+    case "reseteconomy":
+      return handleResetEconomy(message, args);
+
+    case "setcurrency":
+      return handleSetCurrency(message, args);
+
+    case "adminviewconfig":
+    case "viewconfig":
+      return handleAdminViewConfig(message, args);
+
+    // ----------------
+    // Fallback
+    // ----------------
+    default:
+      return message.reply(
+        "Unknown command. Try: `!bal`, `!dep`, `!with`, `!work`, or `!help`."
+      );
+  }
+}
