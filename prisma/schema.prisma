@@ -142,7 +142,7 @@ model GuildConfig {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   guildId       String   @unique
   currencyName  String   @default("Coins")
-  currencyEmoji String   @default("🪙") // <--- NEW FIELD
+  currencyEmoji String   @default("🪙")
   startMoney    Int      @default(1000)
   transferTax   Int      @default(0)
   incomeTax     Int      @default(0)
@@ -150,8 +150,11 @@ model GuildConfig {
   interestRate  Int      @default(0)
   prefix        String   @default("!")
 
-  economyEmojiId   String?  @db.ObjectId
-  economyEmojiName String?
+  // --- ROB CONFIGURATION ---
+  robSuccessPct  Int      @default(60)   // Success chance (0-100)
+  robFinePct     Int      @default(20)   // Percentage of robber's wallet lost on failure
+  robCooldown    Int      @default(300)  // Cooldown in seconds (default 5 mins)
+  robImmuneRoles String[] @default([])   // List of Role IDs that cannot be robbed
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

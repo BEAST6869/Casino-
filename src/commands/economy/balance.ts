@@ -1,18 +1,34 @@
+// src/commands/economy/balance.ts
 import { Message } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { getBankByUserId } from "../../services/bankService";
-import { getGuildConfig } from "../../services/guildConfigService"; // Import
-import { balanceEmbed } from "../../utils/embed";
+import { getGuildConfig } from "../../services/guildConfigService";
+import { balanceEmbed, errorEmbed } from "../../utils/embed";
 
 export async function handleBalance(message: Message) {
-  const user = await ensureUserAndWallet(message.author.id, message.author.tag);
+  // Check if a user was mentioned
+  let targetUser = message.mentions.users.first();
+
+  // If no mention, default to the author
+  if (!targetUser) {
+    targetUser = message.author;
+  }
+
+  // Prevent checking bots (optional, but good practice)
+  if (targetUser.bot) {
+    return message.reply({ 
+      embeds: [errorEmbed(message.author, "Error", "Bots do not have wallets.")] 
+    });
+  }
+
+  // Ensure the target user has a wallet in the database
+  const user = await ensureUserAndWallet(targetUser.id, targetUser.tag);
   const bank = await getBankByUserId(user.id);
-  const config = await getGuildConfig(message.guildId!); // Fetch config
+  const config = await getGuildConfig(message.guildId!);
 
   return message.reply({
     embeds: [
-      // Pass config.currencyEmoji
-      balanceEmbed(message.author, user.wallet!.balance, bank?.balance ?? 0, config.currencyEmoji)
+      balanceEmbed(targetUser, user.wallet!.balance, bank?.balance ?? 0, config.currencyEmoji)
     ]
   });
 }

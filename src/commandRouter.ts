@@ -22,8 +22,9 @@ import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
 import { handleResetEconomy } from "./commands/admin/resetEconomy";
 import { handleSetCurrency } from "./commands/admin/setCurrency";
 import { handleAdminViewConfig } from "./commands/admin/viewConfig";
-// Add imports./commands/admin/setCurrencyEmoji
 import { handleSetCurrencyEmoji } from "./commands/admin/setCurrencyEmoji";
+import { handleRob } from "./commands/economy/rob";
+import { handleSetRob } from "./commands/admin/setRob";
 
 
 
@@ -60,6 +61,14 @@ export async function routeMessage(client: Client, message: Message) {
 
     case "setincome":
       return handleSetIncome(message, args);
+
+    case "rob":
+    case "steal":
+      return handleRob(message, args);
+
+    case "setrob":
+    case "configrob":
+      return handleSetRob(message, args);
 
     case "setprefix":
       return handleSetPrefix(message, args);
