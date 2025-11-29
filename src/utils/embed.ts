@@ -1,5 +1,8 @@
 // src/utils/embed.ts
 import { EmbedBuilder, Colors, User } from "discord.js";
+import { fmtCurrency } from "./format";
+
+// ... keep baseEmbed, infoEmbed, successEmbed, errorEmbed as they were ...
 
 export function baseEmbed(user?: User) {
   const embed = new EmbedBuilder()
@@ -13,7 +16,6 @@ export function baseEmbed(user?: User) {
       iconURL: user.displayAvatarURL({ size: 256 })
     });
   }
-
   return embed;
 }
 
@@ -29,11 +31,12 @@ export function errorEmbed(user: User, title: string, desc?: string) {
   return baseEmbed(user).setColor(Colors.Red).setTitle(title).setDescription(desc ?? "");
 }
 
-export function balanceEmbed(user: User, wallet: number, bank: number) {
+// UPDATED: Now accepts 'emoji' string
+export function balanceEmbed(user: User, wallet: number, bank: number, emoji: string) {
   return baseEmbed(user)
     .setTitle(`${user.username}'s Balance`)
     .addFields(
-      { name: "Wallet", value: `${wallet}`, inline: true },
-      { name: "Bank", value: `${bank}`, inline: true }
+      { name: "Wallet", value: fmtCurrency(wallet, emoji), inline: true },
+      { name: "Bank", value: fmtCurrency(bank, emoji), inline: true }
     );
 }

@@ -142,6 +142,7 @@ model GuildConfig {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   guildId       String   @unique
   currencyName  String   @default("Coins")
+  currencyEmoji String   @default("🪙") // <--- NEW FIELD
   startMoney    Int      @default(1000)
   transferTax   Int      @default(0)
   incomeTax     Int      @default(0)

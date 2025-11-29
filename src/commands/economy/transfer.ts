@@ -3,6 +3,7 @@ import { Message } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { transferAnyFunds } from "../../services/transferService";
 import { successEmbed, errorEmbed } from "../../utils/embed";
+import { fmtAmount } from "../../utils/format"; // Import
 
 export async function handleTransfer(message: Message, args: string[]) {
   try {
@@ -18,7 +19,8 @@ export async function handleTransfer(message: Message, args: string[]) {
     const sender = await ensureUserAndWallet(message.author.id, message.author.tag);
     try {
       await transferAnyFunds(sender.wallet!.id, toId, amount, message.author.id, message.guildId ?? undefined);
-      return message.reply({ embeds: [successEmbed(message.author, "Transfer Successful", `Transferred **${amount}** to <@${toId}>.`)] });
+      // Updated response with fmtAmount
+      return message.reply({ embeds: [successEmbed(message.author, "Transfer Successful", `Transferred **${fmtAmount(amount)}** to <@${toId}>.`)] });
     } catch (err) {
       return message.reply({ embeds: [errorEmbed(message.author, "Transfer Failed", (err as Error).message)] });
     }

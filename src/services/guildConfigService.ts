@@ -19,7 +19,7 @@ export async function getGuildConfig(guildId: string) {
   return cfg;
 }
 
-export async function updateGuildConfig(guildId: string, data: Partial<GuildConfigRow>) {
+export async function updateGuildConfig(guildId: string, data: any) {
   await getGuildConfig(guildId); // ensure exists
   return prisma.guildConfig.update({
     where: { guildId },
