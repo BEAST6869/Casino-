@@ -10,47 +10,57 @@ import {
   Colors,
 } from "discord.js";
 
+import { getEmojiRecord, preferEmojiInlineOrUrl, emojiIconUrl } from "../../utils/emojiRegistry";
+
 /**
- * Interactive help menu (message-based) with ephemeral dropdown responses.
- * - First message is public (Discord limitation), dropdown results are ephemeral.
- * - Only the invoking user can use the dropdown.
+ * Interactive help menu:
+ * - Thumbnail uses bot avatar
+ * - Title: coin emoji inline before "Casino" when available (falls back to 🪙)
+ * - Dropdown options use registry keys:
+ *    general, casino_cash, income, cards, admin
+ * - Dropdown replies are ephemeral (only visible to the invoker)
  */
 export async function handleHelp(message: Message) {
   const isAdmin = message.member?.permissions.has("Administrator") ?? false;
 
-  // --- Overview (public) ---
+  // coin inline if available in this guild otherwise fallback unicode
+  const coinPick = preferEmojiInlineOrUrl("coin", message.guild ?? null);
+  const coinInlinePrefix = coinPick?.type === "inline" ? `${coinPick.value} ` : "🪙 ";
+
+  // thumbnail: bot avatar (as requested)
+  const thumbnailUrl = message.client.user?.displayAvatarURL({ size: 256, extension: "png" });
+
   const overview = new EmbedBuilder()
-    .setTitle("🎰 Casino Bot — Help Menu")
+    .setTitle(`${coinInlinePrefix}Casino Bot — Help Menu`)
     .setDescription(
       "Use the dropdown below to explore command categories.\n\n🔒 Admin section requires server Admin permissions.\n\nResults will be shown only to you (ephemeral)."
     )
     .setColor(Colors.DarkPurple)
-    .setThumbnail(message.client.user?.displayAvatarURL({ size: 256 }) ?? undefined)
+    .setThumbnail(thumbnailUrl)
     .setFooter({ text: "Menu expires in 60s • Only you can use the dropdown" })
     .setTimestamp();
 
-  // --- build select menu options ---
+  // helper to produce select option with registry emoji or unicode fallback
+  function optionWithEmoji(label: string, value: string, desc: string, registryKey?: string, fallbackUnicode?: string) {
+    const opt = new StringSelectMenuOptionBuilder().setLabel(label).setValue(value).setDescription(desc);
+    if (registryKey) {
+      const rec = getEmojiRecord(registryKey);
+      if (rec && rec.id) {
+        opt.setEmoji({ id: rec.id, name: rec.name ?? registryKey, animated: !!rec.animated });
+        return opt;
+      }
+    }
+    if (fallbackUnicode) opt.setEmoji({ name: fallbackUnicode });
+    return opt;
+  }
+
+  // Build options using requested keys and fallbacks
   const options = [
-    new StringSelectMenuOptionBuilder()
-      .setLabel("General")
-      .setValue("general")
-      .setDescription("Basic commands & info"),
-    new StringSelectMenuOptionBuilder()
-      .setLabel("Economy")
-      .setValue("economy")
-      .setDescription("Wallet, bank, deposit, withdraw"),
-    new StringSelectMenuOptionBuilder()
-      .setLabel("Income")
-      .setValue("income")
-      .setDescription("Work / Beg / Crime / Slut commands"),
-    new StringSelectMenuOptionBuilder()
-      .setLabel("Games")
-      .setValue("games")
-      .setDescription("Roulette & other casino games"),
-    new StringSelectMenuOptionBuilder()
-      .setLabel("Admin")
-      .setValue("admin")
-      .setDescription("Admin-only configuration commands"),
+    optionWithEmoji("General", "general", "Basic commands & info", "general", "ℹ️"),
+    optionWithEmoji("Economy", "economy", "Wallet, bank, deposit, withdraw", "casino_cash", "💵"),
+    optionWithEmoji("Income", "income", "Work / Beg / Crime / Slut commands", "income", "🪙"),
+    optionWithEmoji("Games", "games", "Roulette & other casino games", "cards", "🎴"),
+    optionWithEmoji("Admin", "admin", "Admin-only configuration commands", "admin", "🛠️"),
   ];
 
   const select = new StringSelectMenuBuilder()
@@ -62,10 +72,10 @@ export async function handleHelp(message: Message) {
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
-  // send initial public message (note: first message can't be ephemeral for message-based commands)
+  // first message (must be public, ephemeral not allowed here)
   const sent = await message.reply({ embeds: [overview], components: [row] });
 
-  // create a collector that only allows the command invoker to use the menu
+  // collector for only the invoking user
   const collector = sent.createMessageComponentCollector({
     componentType: ComponentType.StringSelect,
     time: 60_000,
@@ -74,10 +84,8 @@ export async function handleHelp(message: Message) {
 
   collector.on("collect", async (interaction: StringSelectMenuInteraction) => {
     try {
-      // selection value
       const value = interaction.values[0];
 
-      // default initialized embed to satisfy TS and in case something goes wrong
       let embed: EmbedBuilder = new EmbedBuilder()
         .setTitle("Unknown Section")
         .setDescription("Something went wrong. Please try again.")
@@ -122,11 +130,10 @@ export async function handleHelp(message: Message) {
           .setColor(Colors.Orange)
           .addFields(
             { name: "`!bet <amount> <choice>`", value: "Roulette betting. Use amount and your choice (color/number).", inline: false },
-            { name: "More games", value: "Slots, blackjack, coinflip can be added on request.", inline: false }
+            { name: "Other games", value: "Slots, blackjack, coinflip can be added on request.", inline: false }
           )
           .setTimestamp();
       } else if (value === "admin") {
-        // For admin section, check interaction member perms (this is ephemeral and only visible to the user)
         const isInvokerAdmin = interaction.memberPermissions?.has("Administrator") ?? false;
         if (!isInvokerAdmin) {
           embed = new EmbedBuilder()
@@ -143,7 +150,7 @@ export async function handleHelp(message: Message) {
               { name: "`!setstartmoney <amount>`", value: "Set starting money for new users.", inline: false },
               { name: "`!setincomecooldown <cmd> <seconds>`", value: "Set cooldown for income commands.", inline: false },
               { name: "`!setincome <cmd> <field> <value>`", value: "Configure min/max/cooldown/success/penalty for income commands.", inline: false },
-              { name: "`!setprefix <symbol>`", value: "Change server prefix.", inline: false },
+              { name: "`!setprefix <symbol>`", value: "Change the server prefix.", inline: false },
               { name: "`!adminviewconfig`", value: "View guild economy config.", inline: false },
               { name: "`!reseteconomy confirm`", value: "⚠ Wipes transactions and zeroes wallets/banks (global).", inline: false }
             )
@@ -151,7 +158,6 @@ export async function handleHelp(message: Message) {
         }
       }
 
-      // Reply ephemerally with the selected section embed
       await interaction.reply({ embeds: [embed], ephemeral: true });
     } catch (err) {
       console.error("Help collector error (collect):", err);
@@ -163,12 +169,11 @@ export async function handleHelp(message: Message) {
 
   collector.on("end", async () => {
     try {
-      // disable the select menu on the original message so it's not usable after timeout
       const disabledMenu = StringSelectMenuBuilder.from(select).setDisabled(true);
       const disabledRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(disabledMenu);
       await sent.edit({ components: [disabledRow] });
     } catch (err) {
-      // non-critical: ignore edit failures
+      // ignore
     }
   });
 

@@ -2,6 +2,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import { infoEmbed } from "../../utils/embed";
 
+
 export const data = new SlashCommandBuilder()
   .setName("help")
   .setDescription("Shows all available commands for this casino bot.");

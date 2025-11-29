@@ -15,6 +15,10 @@ import prisma from "./utils/prisma";
 import { routeMessage } from "./commandRouter";
 import { getGuildConfig } from "./services/guildConfigService";
 import { safeInteractionReply } from "./utils/interactionHelpers";
+import { initEmojiRegistry, listEmojiKeys } from "./utils/emojiRegistry";
+
+
+
 
 // --- load slash commands automatically from src/commands/slash ---
 const slashCommands = new Map<string, any>();
@@ -63,6 +67,10 @@ client.once("ready", async () => {
     console.error("Prisma connection failed:", err);
     process.exit(1);
   }
+
+  await initEmojiRegistry(client);
+  console.log("Emoji registry keys:", listEmojiKeys().slice(0, 200));
+
 
   // register slash commands to each guild the bot is in (guild-scoped)
   if (slashData.length > 0) {
@@ -147,3 +155,5 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(token);
+
+

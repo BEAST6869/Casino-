@@ -3,6 +3,8 @@ import { Client, Message } from "discord.js";
 import { handleHelp } from "./commands/general/help";
 import { handleSetPrefix } from "./commands/admin/setPrefix";
 import { handleSetIncome } from "./commands/admin/setIncome";
+import { handleAddEmoji } from "./commands/admin/addEmoji";
+
 
 
 // economy
@@ -45,10 +47,13 @@ export async function routeMessage(client: Client, message: Message) {
   )[command] ?? command);
 
   switch (normalized) {
+    case "addemoji":
+      return handleAddEmoji(message, args);
+
     case "help":
       return handleHelp(message);
 
-    case "setincome": 
+    case "setincome":
       return handleSetIncome(message, args);
 
     case "setprefix":
