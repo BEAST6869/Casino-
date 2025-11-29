@@ -147,11 +147,15 @@ model GuildConfig {
   incomeTax     Int      @default(0)
   bankLimit     Int?     @default(1000000)
   interestRate  Int      @default(0)
-  prefix        String   @default("!")   // ← ADDED
+  prefix        String   @default("!")
+
+  economyEmojiId   String?  @db.ObjectId
+  economyEmojiName String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 
 
 

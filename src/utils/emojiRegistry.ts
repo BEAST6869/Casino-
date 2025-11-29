@@ -1,8 +1,28 @@
 // src/utils/emojiRegistry.ts
 import fs from "fs";
 import path from "path";
-import { Client, Guild, GuildEmoji } from "discord.js";
-import { APP_EMOJIS } from "../config/emoji";
+import { Client, Guild } from "discord.js";
+
+/**
+ * Optional manual mapping file. We load it dynamically so the module is optional.
+ * If you have `src/config/emojis.ts` exporting `APP_EMOJIS`, it will be used.
+ *
+ * Example of src/config/emojis.ts:
+ * export const APP_EMOJIS = {
+ *   coin: { id: "1443857913637507144", name: "coin", animated: false }
+ * }
+ */
+let APP_EMOJIS: Record<string, { id: string; name?: string; animated?: boolean }> = {};
+try {
+  // dynamic require to avoid hard failure if file doesn't exist
+  // note: relative to compiled JS this path may vary; this runs in ts-node/dev so this should work
+  // Prefer `src/config/emojis.ts` (plural) as the canonical filename.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = require("../config/emojis");
+  if (mod && typeof mod.APP_EMOJIS === "object") APP_EMOJIS = mod.APP_EMOJIS;
+} catch {
+  // no manual config present — that's fine
+}
 
 export type EmojiRecord = { id: string; name?: string; animated?: boolean };
 
@@ -16,7 +36,7 @@ function readPersisted(): Record<string, EmojiRecord> {
     const raw = fs.readFileSync(DATA_PATH, "utf8");
     return JSON.parse(raw || "{}");
   } catch (e) {
-    console.warn("Failed to read persisted emojis:", e);
+    console.warn("emojiRegistry: Failed to read persisted emojis:", e);
     return {};
   }
 }
@@ -27,18 +47,20 @@ function writePersisted(obj: Record<string, EmojiRecord>) {
     fs.mkdirSync(path.dirname(DATA_PATH), { recursive: true });
     fs.writeFileSync(DATA_PATH, JSON.stringify(obj, null, 2), "utf8");
   } catch (e) {
-    console.error("Failed to write persisted emojis:", e);
+    console.error("emojiRegistry: Failed to write persisted emojis:", e);
   }
 }
 
 /**
  * Initialize registry:
- * - load APP_EMOJIS (optional)
+ * - load APP_EMOJIS (optional manual)
  * - load persisted JSON
  * - discover from client cache
- * - (optionally) fetch all emojis from EMOJI_GUILD_ID if env set
+ * - optionally fetch all emojis from EMOJI_GUILD_ID if env set
+ *
+ * Call once after client 'ready'.
  */
-export async function initEmojiRegistry(client: Client) {
+export async function initEmojiRegistry(client: Client): Promise<void> {
   // 1) manual config
   try {
     if (APP_EMOJIS && typeof APP_EMOJIS === "object") {
@@ -48,49 +70,60 @@ export async function initEmojiRegistry(client: Client) {
       }
     }
   } catch (e) {
-    // ignore
+    // continue even if manual config parsing fails
+    console.warn("emojiRegistry: failed loading APP_EMOJIS", e);
   }
 
   // 2) persisted JSON
-  const persisted = readPersisted();
-  for (const [key, rec] of Object.entries(persisted)) {
-    if (rec && rec.id) registry.set(key, { id: rec.id, name: rec.name ?? key, animated: !!rec.animated });
+  try {
+    const persisted = readPersisted();
+    for (const [key, rec] of Object.entries(persisted)) {
+      if (rec && rec.id) registry.set(key, { id: rec.id, name: rec.name ?? key, animated: !!rec.animated });
+    }
+  } catch (e) {
+    console.warn("emojiRegistry: failed loading persisted emojis", e);
   }
 
   // 3) discover currently cached emojis (app + guilds)
-  client.emojis.cache.forEach(e => {
-    // if registry already has this key by name, preserve it; otherwise add under its name
-    if (!registry.has(e.name)) registry.set(e.name, { id: e.id, name: e.name, animated: e.animated });
-  });
+  try {
+    client.emojis.cache.forEach((e) => {
+      if (!registry.has(e.name)) registry.set(e.name, { id: e.id, name: e.name, animated: e.animated });
+    });
+  } catch (e) {
+    console.warn("emojiRegistry: error discovering client emoji cache", e);
+  }
 
   // 4) optionally: fetch emojis from storage guild (if provided)
   const storGuildId = process.env.EMOJI_GUILD_ID;
   if (storGuildId) {
     try {
-      const guild = client.guilds.cache.get(storGuildId) ?? await client.guilds.fetch(storGuildId).catch(() => null);
+      const guild = client.guilds.cache.get(storGuildId) ?? (await client.guilds.fetch(storGuildId).catch(() => null));
       if (guild) {
-        // fetch all emojis from that guild (ensures cache)
-        await guild.emojis.fetch();
+        // ensure guild emojis cached
+        await guild.emojis.fetch().catch(() => null);
         guild.emojis.cache.forEach((e) => {
-          // if key exists keep it, else add by emoji.name
           if (!registry.has(e.name)) registry.set(e.name, { id: e.id, name: e.name, animated: e.animated });
         });
       } else {
-        console.warn("Emoji registry: storage guild not available or bot not in the guild:", storGuildId);
+        console.warn("emojiRegistry: storage guild not available or bot not in the guild:", storGuildId);
       }
     } catch (e) {
-      console.warn("Emoji registry: failed to fetch emojis from storage guild:", e);
+      console.warn("emojiRegistry: failed to fetch emojis from storage guild:", e);
     }
   }
 }
 
 /** Persist a mapping (also writes to JSON) */
 export function setPersistedEmoji(key: string, rec: EmojiRecord) {
-  const obj = readPersisted();
-  obj[key] = rec;
-  writePersisted(obj);
-  // update in-memory registry immediately
-  registry.set(key, rec);
+  try {
+    const obj = readPersisted();
+    obj[key] = rec;
+    writePersisted(obj);
+    // update in-memory registry immediately
+    registry.set(key, rec);
+  } catch (e) {
+    console.error("emojiRegistry: failed to persist emoji mapping:", e);
+  }
 }
 
 /** Basic getters */

@@ -22,6 +22,8 @@ import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
 import { handleResetEconomy } from "./commands/admin/resetEconomy";
 import { handleSetCurrency } from "./commands/admin/setCurrency";
 import { handleAdminViewConfig } from "./commands/admin/viewConfig";
+import { handleSetEconomyEmoji } from "./commands/admin/setEconomy";
+
 
 // games
 import { handleBet } from "./commands/games/roulette";
@@ -58,6 +60,9 @@ export async function routeMessage(client: Client, message: Message) {
 
     case "setprefix":
       return handleSetPrefix(message, args);
+
+    case "seteconomy":
+      return handleSetEconomyEmoji(message, args);
 
 
     // ----------------
