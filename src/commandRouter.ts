@@ -47,6 +47,7 @@ export async function routeMessage(client: Client, message: Message) {
       with: "withdraw",
       wd: "withdraw",
       add: "addmoney",
+      give: "transfermoney",
       adminadd: "addmoney",
       "setstart": "setstartmoney"
     } as Record<string, string>
@@ -92,6 +93,7 @@ export async function routeMessage(client: Client, message: Message) {
       return handleWithdrawBank(message, args);
 
     case "transfer":
+    case "give":
       return handleTransfer(message, args);
 
     // Income commands (work/crime/beg/slut)

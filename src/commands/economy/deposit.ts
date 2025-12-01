@@ -1,25 +1,27 @@
 import { Message } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { depositToBank, getBankByUserId } from "../../services/bankService";
-import { getGuildConfig } from "../../services/guildConfigService"; // Import
+import { getGuildConfig } from "../../services/guildConfigService"; // Cached Config
 import { successEmbed, errorEmbed } from "../../utils/embed";
-import { fmtCurrency } from "../../utils/format"; // Import fmtCurrency
+import { fmtCurrency } from "../../utils/format";
 
 export async function handleDeposit(message: Message, args: string[]) {
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
-  const wallet = user.wallet!;
-  const config = await getGuildConfig(message.guildId!); // Fetch config
+  
+  // 1. Fetch Config (Instant Cache)
+  const config = await getGuildConfig(message.guildId!);
   const emoji = config.currencyEmoji;
 
-  // ... (args parsing logic remains same) ...
+  const wallet = user.wallet!;
   let amount = 0;
-  if (args[0] && args[0].toLowerCase() === "all") {
+
+  if (args[0]?.toLowerCase() === "all") {
     amount = wallet.balance;
   } else {
     amount = parseInt(args[0] || "0");
   }
-  
-  if (!amount || amount <= 0) return message.reply({ embeds: [errorEmbed(message.author, "Invalid Amount", "Usage: `!deposit <amount | all>`")] });
+
+  if (!amount || amount <= 0) return message.reply({ embeds: [errorEmbed(message.author, "Error", "Invalid amount.")] });
 
   try {
     await depositToBank(wallet.id, user.id, amount);
@@ -30,11 +32,11 @@ export async function handleDeposit(message: Message, args: string[]) {
         successEmbed(
           message.author,
           "Deposit Successful",
-          `Deposited **${fmtCurrency(amount, emoji)}** to bank.\nNew bank balance: **${fmtCurrency(bank?.balance ?? 0, emoji)}**`
+          `Deposited **${fmtCurrency(amount, emoji)}**.\nBank: **${fmtCurrency(bank?.balance ?? 0, emoji)}**`
         )
       ]
     });
   } catch (err) {
-    return message.reply({ embeds: [errorEmbed(message.author, "Deposit Failed", (err as Error).message)] });
+    return message.reply({ embeds: [errorEmbed(message.author, "Failed", (err as Error).message)] });
   }
 }

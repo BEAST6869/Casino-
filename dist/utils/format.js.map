@@ -1,0 +1,1 @@
+{"version":3,"file":"format.js","sourceRoot":"","sources":["../../src/utils/format.ts"],"names":[],"mappings":";AAAA,sBAAsB;;AAGtB,8BAEC;AAGD,kCAEC;AARD,gDAAgD;AAChD,SAAgB,SAAS,CAAC,CAAS;IACjC,OAAO,CAAC,CAAC,cAAc,CAAC,OAAO,CAAC,CAAC;AACnC,CAAC;AAED,uEAAuE;AACvE,SAAgB,WAAW,CAAC,CAAS,EAAE,KAAa;IAClD,OAAO,GAAG,KAAK,IAAI,SAAS,CAAC,CAAC,CAAC,EAAE,CAAC;AACpC,CAAC"}

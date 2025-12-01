@@ -1,0 +1,147 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+// src/index.ts
+require("dotenv/config");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const discord_js_1 = require("discord.js");
+const prisma_1 = __importDefault(require("./utils/prisma"));
+const commandRouter_1 = require("./commandRouter");
+const guildConfigService_1 = require("./services/guildConfigService");
+const interactionHelpers_1 = require("./utils/interactionHelpers");
+const emojiRegistry_1 = require("./utils/emojiRegistry");
+// --- load slash commands automatically from src/commands/slash ---
+const slashCommands = new Map();
+const slashData = [];
+const slashDir = path_1.default.join(__dirname, "commands", "slash");
+if (fs_1.default.existsSync(slashDir)) {
+    for (const file of fs_1.default.readdirSync(slashDir)) {
+        if (!file.endsWith(".ts") && !file.endsWith(".js"))
+            continue;
+        // require the module
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const mod = require(path_1.default.join(slashDir, file));
+        if (mod && mod.data && mod.execute) {
+            slashCommands.set(mod.data.name, mod);
+            slashData.push(mod.data.toJSON());
+            console.log(`Loaded slash command: ${mod.data.name}`);
+        }
+    }
+}
+else {
+    console.log("No slash commands directory found; skipping slash load.");
+}
+const token = process.env.DISCORD_TOKEN;
+if (!token) {
+    console.error("DISCORD_TOKEN is missing in your .env");
+    process.exit(1);
+}
+const client = new discord_js_1.Client({
+    intents: [
+        discord_js_1.GatewayIntentBits.Guilds,
+        discord_js_1.GatewayIntentBits.GuildMessages,
+        discord_js_1.GatewayIntentBits.MessageContent,
+    ],
+    partials: [discord_js_1.Partials.Channel],
+});
+client.once("ready", async () => {
+    console.log(`✅ Logged in as ${client.user?.tag}`);
+    // connect prisma
+    try {
+        await prisma_1.default.$connect();
+        console.log("📦 Prisma connected");
+    }
+    catch (err) {
+        console.error("Prisma connection failed:", err);
+        process.exit(1);
+    }
+    await (0, emojiRegistry_1.initEmojiRegistry)(client);
+    console.log("Emoji registry keys:", (0, emojiRegistry_1.listEmojiKeys)().slice(0, 200));
+    // register slash commands to each guild the bot is in (guild-scoped)
+    if (slashData.length > 0) {
+        const rest = new discord_js_1.REST({ version: "10" }).setToken(token);
+        try {
+            for (const [guildId] of client.guilds.cache) {
+                try {
+                    await rest.put(discord_js_1.Routes.applicationGuildCommands(client.user.id, guildId), {
+                        body: slashData,
+                    });
+                    console.log(`Registered ${slashData.length} slash command(s) in guild ${guildId}`);
+                }
+                catch (gerr) {
+                    console.warn(`Failed to register slash commands in guild ${guildId}:`, gerr);
+                }
+            }
+        }
+        catch (err) {
+            console.error("Error while registering slash commands:", err);
+        }
+    }
+    else {
+        console.log("No slash commands to register.");
+    }
+});
+// interaction (slash) handler
+client.on("interactionCreate", async (interaction) => {
+    try {
+        // Only handle chat input (slash) commands here
+        if (!interaction.isChatInputCommand?.())
+            return;
+        // Narrow for TypeScript
+        const ci = interaction;
+        const module = slashCommands.get(ci.commandName);
+        if (!module) {
+            // Use the chat-input interaction to reply
+            return ci.reply({ content: "Unknown command.", ephemeral: true });
+        }
+        await module.execute(ci);
+    }
+    catch (err) {
+        console.error("Slash interaction error:", err);
+        // Use safe helper that handles all interaction types
+        await (0, interactionHelpers_1.safeInteractionReply)(interaction, { content: "Internal error while running command.", ephemeral: true });
+    }
+});
+// message-based commands with per-guild prefix
+client.on("messageCreate", async (message) => {
+    try {
+        if (message.author.bot)
+            return;
+        if (!message.guild)
+            return; // ignore DMs for message commands
+        // fetch guild config (includes prefix)
+        const cfg = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
+        const prefix = cfg?.prefix ?? "!";
+        if (!message.content.startsWith(prefix))
+            return;
+        // strip prefix and normalize to router's expectation (router expects content starting with "!")
+        const contentWithoutPrefix = message.content.slice(prefix.length).trim();
+        if (!contentWithoutPrefix)
+            return;
+        // temporarily set message.content to a "!"-prefixed version so your existing router works unchanged
+        const originalContent = message.content;
+        try {
+            // mutate for compatibility with your router (it reads message.content)
+            message.content = "!" + contentWithoutPrefix;
+            await (0, commandRouter_1.routeMessage)(client, message);
+        }
+        finally {
+            // restore original content
+            message.content = originalContent;
+        }
+    }
+    catch (err) {
+        console.error("Message handler error:", err);
+        try {
+            await message.reply("An internal error occurred while processing your command.");
+        }
+        catch (replyErr) {
+            console.error("Failed to notify user about message handler error:", replyErr);
+        }
+    }
+});
+client.login(token);
+//# sourceMappingURL=index.js.map
