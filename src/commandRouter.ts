@@ -1,11 +1,9 @@
-// src/commandRouter.ts
 import { Client, Message } from "discord.js";
 import { handleHelp } from "./commands/general/help";
 import { handleSetPrefix } from "./commands/admin/setPrefix";
 import { handleSetIncome } from "./commands/admin/setIncome";
 import { handleAddEmoji } from "./commands/admin/addEmoji";
-
-
+import { handleSetRob } from "./commands/admin/setRob";
 
 // economy
 import { handleBalance } from "./commands/economy/balance";
@@ -13,7 +11,9 @@ import { handleDeposit } from "./commands/economy/deposit";
 import { handleWithdrawBank } from "./commands/economy/withdrawBank";
 import { handleTransfer } from "./commands/economy/transfer";
 import { handleIncome } from "./commands/economy/incomeCommands";
-
+import { handleRob } from "./commands/economy/rob";
+import { handleShop } from "./commands/economy/shop";
+import { handleInventory } from "./commands/economy/inventory";
 
 // admin
 import { handleAddMoney } from "./commands/admin/addMoney";
@@ -21,13 +21,10 @@ import { handleSetStartMoney } from "./commands/admin/setStartMoney";
 import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
 import { handleResetEconomy } from "./commands/admin/resetEconomy";
 import { handleSetCurrency } from "./commands/admin/setCurrency";
-import { handleAdminViewConfig } from "./commands/admin/viewConfig";
 import { handleSetCurrencyEmoji } from "./commands/admin/setCurrencyEmoji";
-import { handleRob } from "./commands/economy/rob";
-import { handleSetRob } from "./commands/admin/setRob";
-
-
-
+import { handleAdminViewConfig } from "./commands/admin/viewConfig";
+import { handleAddShopItem } from "./commands/admin/addShopItem";
+import { handleManageShop } from "./commands/admin/manageShop"; // <--- Import added
 
 // games
 import { handleBet } from "./commands/games/roulette";
@@ -47,9 +44,9 @@ export async function routeMessage(client: Client, message: Message) {
       with: "withdraw",
       wd: "withdraw",
       add: "addmoney",
-      give: "transfermoney",
       adminadd: "addmoney",
-      "setstart": "setstartmoney"
+      "setstart": "setstartmoney",
+      inv: "inventory"
     } as Record<string, string>
   )[command] ?? command);
 
@@ -63,22 +60,16 @@ export async function routeMessage(client: Client, message: Message) {
     case "setincome":
       return handleSetIncome(message, args);
 
-    case "rob":
-    case "steal":
-      return handleRob(message, args);
-
+    case "setprefix":
+      return handleSetPrefix(message, args);
+    
     case "setrob":
     case "configrob":
       return handleSetRob(message, args);
 
-    case "setprefix":
-      return handleSetPrefix(message, args);
-
-    // Inside switch(normalized) ...
     case "setcurrencyemoji":
     case "setemoji":
       return handleSetCurrencyEmoji(message, args);
-
 
     // ----------------
     // Economy / User
@@ -93,15 +84,28 @@ export async function routeMessage(client: Client, message: Message) {
       return handleWithdrawBank(message, args);
 
     case "transfer":
-    case "give":
       return handleTransfer(message, args);
 
-    // Income commands (work/crime/beg/slut)
+    // Income
     case "work":
     case "crime":
     case "beg":
     case "slut":
       return handleIncome(message);
+
+    case "rob":
+    case "steal":
+      return handleRob(message, args);
+      
+    // ----------------
+    // Shop & Inventory
+    // ----------------
+    case "shop":
+    case "store":
+      return handleShop(message, args);
+
+    case "inventory":
+      return handleInventory(message, args);
 
     // ----------------
     // Games
@@ -132,13 +136,23 @@ export async function routeMessage(client: Client, message: Message) {
     case "adminviewconfig":
     case "viewconfig":
       return handleAdminViewConfig(message, args);
+    
+    // Shop Management
+    case "shopadd":
+    case "addshopitem":
+      return handleAddShopItem(message, args);
+
+    case "manageitem":
+    case "edititem":
+    case "delitem":
+      return handleManageShop(message, args);
 
     // ----------------
     // Fallback
     // ----------------
     default:
       return message.reply(
-        "Unknown command. Try: `!bal`, `!dep`, `!with`, `!work`, or `!help`."
+        "Unknown command. Try: `!bal`, `!shop`, `!inv`, `!help`."
       );
   }
 }

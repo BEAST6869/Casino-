@@ -88,17 +88,6 @@ model Job {
   cooldown    Int
 }
 
-model ShopItem {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  guildId      String
-  name         String
-  price        Int
-  stock        Int? // null = unlimited
-  actions      Json? // actions to execute on buy/use (role grant, balance edit, etc)
-  requirements Json? // role required, balance required, item required
-  createdAt    DateTime @default(now())
-}
-
 model Audit {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   guildId   String?
@@ -160,6 +149,38 @@ model GuildConfig {
   updatedAt DateTime @updatedAt
 }
 
+
+model ShopItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId     String
+  name        String
+  description String   @default("No description")
+  price       Int
+  stock       Int      @default(-1) // -1 means infinite stock
+  roleId      String?  // Optional: Give a role when bought
+  
+  // Relations
+  inventory   Inventory[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Inventory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId     String
+  userId      String   // Discord User ID
+  
+  shopItem    ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+  shopItemId  String   @db.ObjectId
+  
+  amount      Int      @default(1)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, shopItemId]) // Prevents duplicate rows for same item
+}
 
 
 
