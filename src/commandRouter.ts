@@ -14,6 +14,7 @@ import { handleIncome } from "./commands/economy/incomeCommands";
 import { handleRob } from "./commands/economy/rob";
 import { handleShop } from "./commands/economy/shop";
 import { handleInventory } from "./commands/economy/inventory";
+import { handleProfile } from "./commands/economy/profile";
 
 // admin
 import { handleAddMoney } from "./commands/admin/addMoney";
@@ -106,6 +107,9 @@ export async function routeMessage(client: Client, message: Message) {
 
     case "inventory":
       return handleInventory(message, args);
+
+    case "profile":
+      return handleProfile(message, args);
 
     // ----------------
     // Games

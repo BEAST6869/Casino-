@@ -4,17 +4,33 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getShopItems = getShopItems;
+exports.getShopItemByName = getShopItemByName;
 exports.createShopItem = createShopItem;
+exports.updateShopItem = updateShopItem;
 exports.deleteShopItem = deleteShopItem;
 exports.buyItem = buyItem;
 exports.getUserInventory = getUserInventory;
 const prisma_1 = __importDefault(require("../utils/prisma"));
+// --- Fetch Functions ---
 /**
  * Fetch all shop items for a specific guild
  */
 async function getShopItems(guildId) {
     return prisma_1.default.shopItem.findMany({ where: { guildId } });
 }
+/**
+ * Fetch a single shop item by its exact name (case-insensitive)
+ * Used by admin commands like !manageitem
+ */
+async function getShopItemByName(guildId, name) {
+    return prisma_1.default.shopItem.findFirst({
+        where: {
+            guildId,
+            name: { equals: name, mode: "insensitive" }
+        }
+    });
+}
+// --- Management Functions (Admin) ---
 /**
  * Create a new shop item (Admin function)
  */
@@ -31,11 +47,23 @@ async function createShopItem(guildId, name, price, description, roleId) {
     });
 }
 /**
+ * Update a shop item by ID (Admin function)
+ */
+async function updateShopItem(guildId, itemId, data) {
+    // We use updateMany as a safety check to ensure it belongs to the correct guild (though ID is unique)
+    // Or simply update by ID. Prisma update works by unique ID.
+    return prisma_1.default.shopItem.update({
+        where: { id: itemId },
+        data
+    });
+}
+/**
  * Delete a shop item (Admin function)
  */
 async function deleteShopItem(itemId) {
     return prisma_1.default.shopItem.delete({ where: { id: itemId } });
 }
+// --- User Action Functions ---
 /**
  * Handle purchasing an item:
  * 1. Checks if item exists and has stock

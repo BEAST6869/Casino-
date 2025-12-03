@@ -14,6 +14,7 @@ const transfer_1 = require("./commands/economy/transfer");
 const incomeCommands_1 = require("./commands/economy/incomeCommands");
 const rob_1 = require("./commands/economy/rob");
 const shop_1 = require("./commands/economy/shop");
+const inventory_1 = require("./commands/economy/inventory");
 // admin
 const addMoney_1 = require("./commands/admin/addMoney");
 const setStartMoney_1 = require("./commands/admin/setStartMoney");
@@ -23,6 +24,7 @@ const setCurrency_1 = require("./commands/admin/setCurrency");
 const setCurrencyEmoji_1 = require("./commands/admin/setCurrencyEmoji");
 const viewConfig_1 = require("./commands/admin/viewConfig");
 const addShopItem_1 = require("./commands/admin/addShopItem");
+const manageShop_1 = require("./commands/admin/manageShop"); // <--- Import added
 // games
 const roulette_1 = require("./commands/games/roulette");
 async function routeMessage(client, message) {
@@ -39,7 +41,8 @@ async function routeMessage(client, message) {
         wd: "withdraw",
         add: "addmoney",
         adminadd: "addmoney",
-        "setstart": "setstartmoney"
+        "setstart": "setstartmoney",
+        inv: "inventory"
     }[command] ?? command);
     switch (normalized) {
         case "addemoji":
@@ -67,7 +70,7 @@ async function routeMessage(client, message) {
             return (0, withdrawBank_1.handleWithdrawBank)(message, args);
         case "transfer":
             return (0, transfer_1.handleTransfer)(message, args);
-        // Income commands (work/crime/beg/slut)
+        // Income
         case "work":
         case "crime":
         case "beg":
@@ -77,11 +80,13 @@ async function routeMessage(client, message) {
         case "steal":
             return (0, rob_1.handleRob)(message, args);
         // ----------------
-        // Shop
+        // Shop & Inventory
         // ----------------
         case "shop":
         case "store":
             return (0, shop_1.handleShop)(message, args);
+        case "inventory":
+            return (0, inventory_1.handleInventory)(message, args);
         // ----------------
         // Games
         // ----------------
@@ -105,14 +110,19 @@ async function routeMessage(client, message) {
         case "adminviewconfig":
         case "viewconfig":
             return (0, viewConfig_1.handleAdminViewConfig)(message, args);
+        // Shop Management
         case "shopadd":
         case "addshopitem":
             return (0, addShopItem_1.handleAddShopItem)(message, args);
+        case "manageitem":
+        case "edititem":
+        case "delitem":
+            return (0, manageShop_1.handleManageShop)(message, args);
         // ----------------
         // Fallback
         // ----------------
         default:
-            return message.reply("Unknown command. Try: `!bal`, `!dep`, `!with`, `!work`, `!shop` or `!help`.");
+            return message.reply("Unknown command. Try: `!bal`, `!shop`, `!inv`, `!help`.");
     }
 }
 //# sourceMappingURL=commandRouter.js.map
