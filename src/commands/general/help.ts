@@ -8,107 +8,150 @@ import {
   StringSelectMenuInteraction,
   Colors,
   PermissionsBitField,
+  GuildMember
 } from "discord.js";
-import { getGuildConfig } from "../../services/guildConfigService"; // Cached Config
+import { getGuildConfig } from "../../services/guildConfigService";
+import { emojiInline } from "../../utils/emojiRegistry";
 
 export async function handleHelp(message: Message) {
-  try {
-    // 1. Fetch Config (Instant Cache)
-    const config = await getGuildConfig(message.guildId!);
-    const emoji = config.currencyEmoji;
-    const prefix = config.prefix;
+  const config = await getGuildConfig(message.guildId!);
+  const prefix = config.prefix;
 
-    const overview = new EmbedBuilder()
-      .setTitle(`${emoji} Casino Bot — Help Menu`)
-      .setDescription(`Use the dropdown below to explore.\nServer Prefix: \`${prefix}\`\nEconomy Emoji: ${emoji}`)
-      .setColor(Colors.DarkPurple)
-      .setThumbnail(message.client.user?.displayAvatarURL() ?? null);
+  // 1. Resolve Emojis (Custom or Default)
+  // UPDATED: Using the specific ID provided by the user
+  const eEconomy = "<a:money:1445732360204193824>"; 
+  const eGames   = emojiInline("casino", message.guild) || "🎰";
+  const eAdmin   = emojiInline("settings", message.guild) || "⚙️";
+  const eIncome  = config.currencyEmoji;
 
-    const options = [
-      new StringSelectMenuOptionBuilder().setLabel("Economy").setValue("economy").setDescription("Wallet, Bank, Rob, Transfer").setEmoji("💰"),
-      new StringSelectMenuOptionBuilder().setLabel("Income").setValue("income").setDescription("Work, Beg, Crime").setEmoji("💸"),
-      new StringSelectMenuOptionBuilder().setLabel("Games").setValue("games").setDescription("Roulette, Slots").setEmoji("🎲"),
-      new StringSelectMenuOptionBuilder().setLabel("Admin").setValue("admin").setDescription("Settings & Management").setEmoji("🛠️"),
-    ];
+  // 2. Helper to prepare Emoji for Select Menu (Returns string for unicode, object for custom)
+  const resolveMenuEmoji = (str: string) => {
+    // Check if it's a custom emoji format <a:name:id> or <:name:id>
+    const match = str.match(/:(\d+)>/);
+    if (match) {
+      return { id: match[1] }; // Return Object for Custom Emoji
+    }
+    // Check if it's already just an ID
+    if (str.match(/^\d+$/)) {
+      return { id: str };
+    }
+    // Otherwise assume it's unicode
+    return str;
+  };
 
-    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-      new StringSelectMenuBuilder().setCustomId("help_select").setPlaceholder("Select a category").addOptions(options)
-    );
+  const overview = new EmbedBuilder()
+    .setTitle(`${eIncome} Casino Bot — Help Menu`)
+    .setDescription(`Use the dropdown below to explore commands.\nServer Prefix: \`${prefix}\``)
+    .setColor(Colors.DarkPurple)
+    .setThumbnail(message.client.user?.displayAvatarURL() ?? null);
 
-    const sent = await message.reply({ embeds: [overview], components: [row] });
+  const options = [
+    new StringSelectMenuOptionBuilder()
+      .setLabel("Economy")
+      .setValue("economy")
+      .setDescription("Money, Banking, Shop, Leaderboard")
+      .setEmoji(resolveMenuEmoji(eEconomy) as any), 
 
-    const collector = sent.createMessageComponentCollector({
-      componentType: ComponentType.StringSelect,
-      time: 60_000,
-      filter: (i) => i.user.id === message.author.id,
-    });
+    new StringSelectMenuOptionBuilder()
+      .setLabel("Income")
+      .setValue("income")
+      .setDescription("Work, Beg, Crime")
+      .setEmoji(resolveMenuEmoji(eIncome) as any), 
 
-    collector.on("collect", async (i) => {
-      try {
-        const val = i.values[0];
-        let embed = new EmbedBuilder().setColor(Colors.Blurple);
+    new StringSelectMenuOptionBuilder()
+      .setLabel("Games")
+      .setValue("games")
+      .setDescription("Roulette, Slots")
+      .setEmoji(resolveMenuEmoji(eGames) as any),
 
-        if (val === "economy") {
-          embed.setTitle("💰 Economy Commands")
-            .addFields(
-              { name: `\`${prefix}bal [user]\``, value: "Check balance." },
-              { name: `\`${prefix}dep <amount|all>\``, value: "Deposit to bank." },
-              { name: `\`${prefix}with <amount|all>\``, value: "Withdraw from bank." },
-              { name: `\`${prefix}rob <user>\``, value: "Steal from someone's wallet." },
-              { name: `\`${prefix}transfer <amount> <user>\``, value: "Gift money." }
-            );
-        } 
-        else if (val === "income") {
-          embed.setTitle("💸 Income Commands")
-            .addFields(
-              { name: `\`${prefix}work\``, value: "Earn standard income." },
-              { name: `\`${prefix}beg\``, value: "Small earnings." },
-              { name: `\`${prefix}crime\``, value: "High risk, high reward." },
-              { name: `\`${prefix}slut\``, value: "Risky income." }
-            );
-        }
-        else if (val === "games") {
-          embed.setTitle("🎲 Games")
-            .addFields(
-              { name: `\`${prefix}bet <amount> <choice>\``, value: "Roulette (red, black, 0-36)." }
-            );
-        }
-        else if (val === "admin") {
-          // SAFER CHECK: Use i.memberPermissions which handles API members correctly
-          if (!i.memberPermissions?.has(PermissionsBitField.Flags.Administrator)) {
-            await i.reply({ content: "🚫 You need **Administrator** permissions to view this section.", ephemeral: true });
-            return;
-          }
+    new StringSelectMenuOptionBuilder()
+      .setLabel("Admin")
+      .setValue("admin")
+      .setDescription("Server Configuration & Management")
+      .setEmoji(resolveMenuEmoji(eAdmin) as any),
+  ];
 
-          embed.setTitle("🛠️ Admin Config")
-            .addFields(
-              { name: `\`${prefix}setemoji <emoji>\``, value: "Set economy currency symbol." },
-              { name: `\`${prefix}setrob success <0-100>\``, value: "Set rob success rate." },
-              { name: `\`${prefix}setrob fine <0-100>\``, value: "Set rob fine percentage." },
-              { name: `\`${prefix}setrob cooldown <sec>\``, value: "Set rob cooldown." },
-              { name: `\`${prefix}setrob immunity <add|remove> <role>\``, value: "Manage rob immunity roles." },
-              { name: `\`${prefix}setincome <cmd> <field> <val>\``, value: "Configure income amounts." },
-              { name: `\`${prefix}setincomecooldown <cmd> <sec>\``, value: "Quick set income cooldowns." },
-              { name: `\`${prefix}addmoney <user> <amount>\``, value: "Spawn money." },
-              { name: `\`${prefix}setstartmoney <amount>\``, value: "Set starting balance." },
-              { name: `\`${prefix}setprefix <symbol>\``, value: "Change bot prefix." },
-              { name: `\`${prefix}viewconfig\``, value: "View current server settings." },
-              { name: `\`${prefix}reseteconomy confirm\``, value: "⚠ Wipe all economy data." }
-            );
-        }
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId("help_select").setPlaceholder("Select a category").addOptions(options)
+  );
 
-        await i.reply({ embeds: [embed], ephemeral: true });
+  const sent = await message.reply({ embeds: [overview], components: [row] });
 
-      } catch (err) {
-        console.error("Help Menu Interaction Error:", err);
-        if (!i.replied && !i.deferred) {
-          await i.reply({ content: "An error occurred while handling your selection.", ephemeral: true });
-        }
+  const collector = sent.createMessageComponentCollector({
+    componentType: ComponentType.StringSelect,
+    time: 60_000,
+    filter: (i) => i.user.id === message.author.id,
+  });
+
+  collector.on("collect", async (i) => {
+    const val = i.values[0];
+    let embed = new EmbedBuilder().setColor(Colors.Blurple);
+
+    if (val === "economy") {
+      embed.setTitle(`${eEconomy} Economy & Shop`)
+        .addFields(
+          { name: `\`${prefix}profile\``, value: "View your stats, net worth & credit score." },
+          { name: `\`${prefix}bal [user]\``, value: "Check wallet and bank balance." },
+          { name: `\`${prefix}lb [cash]\``, value: "View Server Leaderboard (Net worth or Cash)." },
+          { name: `\`${prefix}shop\``, value: "View and buy items from the store." },
+          { name: `\`${prefix}inv\``, value: "View your purchased items." },
+          { name: `\`${prefix}dep <amount|all>\``, value: "Deposit money to bank." },
+          { name: `\`${prefix}with <amount|all>\``, value: "Withdraw money from bank." },
+          { name: `\`${prefix}rob <user>\``, value: "Attempt to steal from a user." },
+          { name: `\`${prefix}transfer <amount> <user>\``, value: "Gift money to another user." }
+        );
+    } 
+    else if (val === "income") {
+      embed.setTitle(`${eIncome} Income Commands`)
+        .addFields(
+          { name: `\`${prefix}work\``, value: "Earn standard income." },
+          { name: `\`${prefix}beg\``, value: "Small earnings with low cooldown." },
+          { name: `\`${prefix}crime\``, value: "High risk, high reward." },
+          { name: `\`${prefix}slut\``, value: "Risky income command." }
+        );
+    }
+    else if (val === "games") {
+      embed.setTitle(`${eGames} Games`)
+        .addFields(
+          { name: `\`${prefix}bet <amount> <choice>\``, value: "Play Roulette (Red, Black, Odd, Even, 0-36)." }
+        );
+    }
+    else if (val === "admin") {
+      const member = i.member as GuildMember;
+      if (!member || !member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        await i.reply({ content: "🚫 **Access Denied:** Administrators only.", ephemeral: true });
+        return;
       }
-    });
 
-  } catch (err) {
-    console.error("Help Command Error:", err);
-    await message.reply("An error occurred while opening the help menu.");
-  }
+      embed.setTitle(`${eAdmin} Admin Configuration`)
+        .addFields(
+          { name: "🏦 **Economy Control**", value: 
+            `\`${prefix}addmoney <user> <amount>\`\n` +
+            `\`${prefix}removemoney <user> <amount> [bank]\`\n` +
+            `\`${prefix}reseteconomy confirm\``
+          },
+          { name: "🛒 **Shop Management**", value: 
+            `\`${prefix}shopadd <price> <name>\` (Quick Add)\n` +
+            `\`${prefix}manageitem [name]\` (Interactive Edit/Delete)` 
+          },
+          { name: "⚙️ **Settings**", value: 
+            `\`${prefix}setprefix <symbol>\`\n` +
+            `\`${prefix}setemoji <emoji>\`\n` +
+            `\`${prefix}setstartmoney <amount>\``
+          },
+          { name: "👮 **Robbery Settings**", value: 
+            `\`${prefix}setrob success <0-100>\`\n` +
+            `\`${prefix}setrob fine <0-100>\`\n` +
+            `\`${prefix}setrob cooldown <seconds>\`\n` +
+            `\`${prefix}setrob immunity <add/remove> <role>\``
+          },
+          { name: "💰 **Income Settings**", value: 
+            `\`${prefix}setincome <cmd> <min|max> <amount>\`\n` +
+            `\`${prefix}setincomecooldown <cmd> <seconds>\`` 
+          }
+        );
+    }
+
+    await i.reply({ embeds: [embed], ephemeral: true });
+  });
 }

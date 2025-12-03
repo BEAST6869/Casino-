@@ -15,6 +15,8 @@ const incomeCommands_1 = require("./commands/economy/incomeCommands");
 const rob_1 = require("./commands/economy/rob");
 const shop_1 = require("./commands/economy/shop");
 const inventory_1 = require("./commands/economy/inventory");
+const profile_1 = require("./commands/economy/profile");
+const leaderboard_1 = require("./commands/economy/leaderboard");
 // admin
 const addMoney_1 = require("./commands/admin/addMoney");
 const setStartMoney_1 = require("./commands/admin/setStartMoney");
@@ -24,7 +26,7 @@ const setCurrency_1 = require("./commands/admin/setCurrency");
 const setCurrencyEmoji_1 = require("./commands/admin/setCurrencyEmoji");
 const viewConfig_1 = require("./commands/admin/viewConfig");
 const addShopItem_1 = require("./commands/admin/addShopItem");
-const manageShop_1 = require("./commands/admin/manageShop"); // <--- Import added
+const manageShop_1 = require("./commands/admin/manageShop");
 // games
 const roulette_1 = require("./commands/games/roulette");
 async function routeMessage(client, message) {
@@ -32,6 +34,7 @@ async function routeMessage(client, message) {
     const [cmd, ...args] = raw.split(/\s+/);
     const command = cmd.toLowerCase();
     // Aliases mapping
+    // We map aliases to a single "canonical" command name to simplify the switch
     const normalized = ({
         dep: "deposit",
         depo: "deposit",
@@ -42,7 +45,10 @@ async function routeMessage(client, message) {
         add: "addmoney",
         adminadd: "addmoney",
         "setstart": "setstartmoney",
-        inv: "inventory"
+        inv: "inventory",
+        lb: "leaderboard",
+        top: "leaderboard",
+        rich: "leaderboard"
     }[command] ?? command);
     switch (normalized) {
         case "addemoji":
@@ -87,6 +93,16 @@ async function routeMessage(client, message) {
             return (0, shop_1.handleShop)(message, args);
         case "inventory":
             return (0, inventory_1.handleInventory)(message, args);
+        case "profile":
+        case "p":
+        case "userinfo":
+            return (0, profile_1.handleProfile)(message, args);
+        // ----------------
+        // Leaderboard
+        // ----------------
+        case "leaderboard":
+            // Handles !lb, !top, !rich via alias mapping above
+            return (0, leaderboard_1.handleLeaderboard)(message, args);
         // ----------------
         // Games
         // ----------------

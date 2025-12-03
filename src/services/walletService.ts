@@ -1,4 +1,3 @@
-// src/services/walletService.ts
 import prisma from "../utils/prisma";
 
 // User Cache: Stores which Discord IDs we have already verified exist
@@ -65,5 +64,26 @@ export async function depositToWallet(walletId: string, amount: number, meta: an
   await prisma.$transaction([
     prisma.transaction.create({ data: { walletId, amount, type: "deposit", meta, isEarned: earned } }),
     prisma.wallet.update({ where: { id: walletId }, data: { balance: { increment: amount } } })
+  ]);
+}
+
+/** Admin remove from wallet */
+export async function removeMoneyFromWallet(walletId: string, amount: number) {
+  const wallet = await prisma.wallet.findUnique({ where: { id: walletId } });
+  if (!wallet || wallet.balance < amount) throw new Error("Insufficient wallet funds.");
+
+  await prisma.$transaction([
+    prisma.transaction.create({ 
+      data: { 
+        walletId, 
+        amount: -amount, 
+        type: "admin_remove", 
+        meta: { by: "admin" } 
+      } 
+    }),
+    prisma.wallet.update({ 
+      where: { id: walletId }, 
+      data: { balance: { decrement: amount } } 
+    })
   ]);
 }

@@ -14,7 +14,7 @@ import { getUserInventory } from "../../services/shopService";
 import { getGuildConfig } from "../../services/guildConfigService";
 import { fmtCurrency } from "../../utils/format";
 import { errorEmbed } from "../../utils/embed";
-import { getEmojiRecord, emojiInline } from "../../utils/emojiRegistry";
+import { emojiInline } from "../../utils/emojiRegistry";
 
 export async function handleProfile(message: Message, args: string[]) {
   try {
@@ -44,6 +44,7 @@ export async function handleProfile(message: Message, args: string[]) {
     const netWorth = walletBal + bankBal + inventoryValue;
 
     // 5. Resolve Custom Emojis from Guild (fallback to defaults if missing)
+    // Using standard unicode Wallet/Purse emoji if custom 'wallet' not found
     const eWallet = emojiInline("Wallet", message.guild) || "👛"; 
     const eBank = emojiInline("bank", message.guild) || "🏦";
     const eInv = emojiInline("inventory", message.guild) || "🎒";
@@ -65,19 +66,25 @@ export async function handleProfile(message: Message, args: string[]) {
       .setFooter({ text: "Global Economy Stats" })
       .setTimestamp();
 
-    // 7. Create Buttons
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("prof_inv").setLabel("Inventory").setStyle(ButtonStyle.Secondary).setEmoji(eInv.match(/^\d+$/) ? eInv : "🎒"), 
-      new ButtonBuilder().setCustomId("prof_bal").setLabel("Balance").setStyle(ButtonStyle.Secondary).setEmoji(eWallet.match(/^\d+$/) ? eWallet : "👛") // Changed button emoji default
-    );
-
-    // Try to set button emoji from registry ID if available for cleaner look
-    const recInv = getEmojiRecord("inventory");
-    const recWallet = getEmojiRecord("Wallet");
+    // 7. Create Buttons with Matching Emojis
+  
     
-    if (recInv?.id) row.components[0].setEmoji(recInv.id);
-    if (recWallet?.id) row.components[1].setEmoji(recWallet.id);
+    // Helper to safely extract ID or return unicode char
+    const parseEmojiForButton = (str: string) => str.match(/:(\d+)>/)?.[1] ?? (str.match(/^\d+$/) ? str : str);
 
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId("prof_inv")
+        .setLabel("Inventory")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji(parseEmojiForButton(eInv)), 
+      
+      new ButtonBuilder()
+        .setCustomId("prof_bal")
+        .setLabel("Balance")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji(parseEmojiForButton(eWallet))
+    );
 
     const sentMsg = await message.reply({ embeds: [embed], components: [row] });
 

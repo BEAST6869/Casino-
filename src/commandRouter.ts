@@ -15,9 +15,11 @@ import { handleRob } from "./commands/economy/rob";
 import { handleShop } from "./commands/economy/shop";
 import { handleInventory } from "./commands/economy/inventory";
 import { handleProfile } from "./commands/economy/profile";
+import { handleLeaderboard } from "./commands/economy/leaderboard";
 
 // admin
 import { handleAddMoney } from "./commands/admin/addMoney";
+import { handleRemoveMoney } from "./commands/admin/removeMoney"; // <--- Import Added
 import { handleSetStartMoney } from "./commands/admin/setStartMoney";
 import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
 import { handleResetEconomy } from "./commands/admin/resetEconomy";
@@ -25,7 +27,7 @@ import { handleSetCurrency } from "./commands/admin/setCurrency";
 import { handleSetCurrencyEmoji } from "./commands/admin/setCurrencyEmoji";
 import { handleAdminViewConfig } from "./commands/admin/viewConfig";
 import { handleAddShopItem } from "./commands/admin/addShopItem";
-import { handleManageShop } from "./commands/admin/manageShop"; // <--- Import added
+import { handleManageShop } from "./commands/admin/manageShop";
 
 // games
 import { handleBet } from "./commands/games/roulette";
@@ -46,8 +48,13 @@ export async function routeMessage(client: Client, message: Message) {
       wd: "withdraw",
       add: "addmoney",
       adminadd: "addmoney",
+      remove: "removemoney", // <--- Alias Added
+      take: "removemoney",   // <--- Alias Added
       "setstart": "setstartmoney",
-      inv: "inventory"
+      inv: "inventory",
+      lb: "leaderboard",
+      top: "leaderboard",
+      rich: "leaderboard"
     } as Record<string, string>
   )[command] ?? command);
 
@@ -109,7 +116,16 @@ export async function routeMessage(client: Client, message: Message) {
       return handleInventory(message, args);
 
     case "profile":
+    case "p":
+    case "userinfo":
       return handleProfile(message, args);
+
+    // ----------------
+    // Leaderboard
+    // ----------------
+    case "leaderboard":
+      // Handles !lb, !top, !rich via alias mapping above
+      return handleLeaderboard(message, args);
 
     // ----------------
     // Games
@@ -123,6 +139,11 @@ export async function routeMessage(client: Client, message: Message) {
     case "addmoney":
     case "adminadd":
       return handleAddMoney(message, args);
+
+    case "removemoney":  // <--- Case Added
+    case "remove":
+    case "takemoney":
+      return handleRemoveMoney(message, args);
 
     case "setstartmoney":
     case "setstart":
@@ -149,6 +170,9 @@ export async function routeMessage(client: Client, message: Message) {
     case "manageitem":
     case "edititem":
     case "delitem":
+    case "editshop":
+    case "deleteshop":
+      // All these route to the interactive manager
       return handleManageShop(message, args);
 
     // ----------------
