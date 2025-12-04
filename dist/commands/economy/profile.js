@@ -32,6 +32,7 @@ async function handleProfile(message, args) {
         // 4. Calculate Net Worth
         const netWorth = walletBal + bankBal + inventoryValue;
         // 5. Resolve Custom Emojis from Guild (fallback to defaults if missing)
+        // Using standard unicode Wallet/Purse emoji if custom 'wallet' not found
         const eWallet = (0, emojiRegistry_1.emojiInline)("Wallet", message.guild) || "👛";
         const eBank = (0, emojiRegistry_1.emojiInline)("bank", message.guild) || "🏦";
         const eInv = (0, emojiRegistry_1.emojiInline)("inventory", message.guild) || "🎒";
@@ -45,16 +46,18 @@ async function handleProfile(message, args) {
             .addFields({ name: `${eWallet} Wallet`, value: (0, format_1.fmtCurrency)(walletBal, currencyEmoji), inline: true }, { name: `${eBank} Bank`, value: (0, format_1.fmtCurrency)(bankBal, currencyEmoji), inline: true }, { name: `${eInv} Inventory Value`, value: (0, format_1.fmtCurrency)(inventoryValue, currencyEmoji), inline: true }, { name: `${eGraph} Net Worth`, value: (0, format_1.fmtCurrency)(netWorth, currencyEmoji), inline: true }, { name: `${eCredits} Credit Score`, value: `${user.creditScore}`, inline: true })
             .setFooter({ text: "Global Economy Stats" })
             .setTimestamp();
-        // 7. Create Buttons
-        const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId("prof_inv").setLabel("Inventory").setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji(eInv.match(/^\d+$/) ? eInv : "🎒"), new discord_js_1.ButtonBuilder().setCustomId("prof_bal").setLabel("Balance").setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji(eWallet.match(/^\d+$/) ? eWallet : "👛") // Changed button emoji default
-        );
-        // Try to set button emoji from registry ID if available for cleaner look
-        const recInv = (0, emojiRegistry_1.getEmojiRecord)("inventory");
-        const recWallet = (0, emojiRegistry_1.getEmojiRecord)("Wallet");
-        if (recInv?.id)
-            row.components[0].setEmoji(recInv.id);
-        if (recWallet?.id)
-            row.components[1].setEmoji(recWallet.id);
+        // 7. Create Buttons with Matching Emojis
+        // Helper to safely extract ID or return unicode char
+        const parseEmojiForButton = (str) => str.match(/:(\d+)>/)?.[1] ?? (str.match(/^\d+$/) ? str : str);
+        const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
+            .setCustomId("prof_inv")
+            .setLabel("Inventory")
+            .setStyle(discord_js_1.ButtonStyle.Secondary)
+            .setEmoji(parseEmojiForButton(eInv)), new discord_js_1.ButtonBuilder()
+            .setCustomId("prof_bal")
+            .setLabel("Balance")
+            .setStyle(discord_js_1.ButtonStyle.Secondary)
+            .setEmoji(parseEmojiForButton(eWallet)));
         const sentMsg = await message.reply({ embeds: [embed], components: [row] });
         // 8. Interaction Collector
         const collector = sentMsg.createMessageComponentCollector({

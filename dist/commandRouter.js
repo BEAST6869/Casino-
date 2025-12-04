@@ -19,6 +19,7 @@ const profile_1 = require("./commands/economy/profile");
 const leaderboard_1 = require("./commands/economy/leaderboard");
 // admin
 const addMoney_1 = require("./commands/admin/addMoney");
+const removeMoney_1 = require("./commands/admin/removeMoney");
 const setStartMoney_1 = require("./commands/admin/setStartMoney");
 const setIncomeCooldown_1 = require("./commands/admin/setIncomeCooldown");
 const resetEconomy_1 = require("./commands/admin/resetEconomy");
@@ -34,7 +35,6 @@ async function routeMessage(client, message) {
     const [cmd, ...args] = raw.split(/\s+/);
     const command = cmd.toLowerCase();
     // Aliases mapping
-    // We map aliases to a single "canonical" command name to simplify the switch
     const normalized = ({
         dep: "deposit",
         depo: "deposit",
@@ -44,11 +44,18 @@ async function routeMessage(client, message) {
         wd: "withdraw",
         add: "addmoney",
         adminadd: "addmoney",
+        remove: "removemoney",
+        take: "removemoney",
         "setstart": "setstartmoney",
         inv: "inventory",
         lb: "leaderboard",
         top: "leaderboard",
-        rich: "leaderboard"
+        rich: "leaderboard",
+        "lb-wallet": "lb-wallet", // Explicit mapping to preserve the dash command
+        lbwallet: "lb-wallet",
+        cashlb: "lb-wallet",
+        roulette: "bet",
+        roul: "bet"
     }[command] ?? command);
     switch (normalized) {
         case "addemoji":
@@ -101,8 +108,11 @@ async function routeMessage(client, message) {
         // Leaderboard
         // ----------------
         case "leaderboard":
-            // Handles !lb, !top, !rich via alias mapping above
+            // Standard Net Worth Leaderboard
             return (0, leaderboard_1.handleLeaderboard)(message, args);
+        case "lb-wallet":
+            // Forces Cash Leaderboard by injecting the "cash" argument
+            return (0, leaderboard_1.handleLeaderboard)(message, ["cash"]);
         // ----------------
         // Games
         // ----------------
@@ -114,6 +124,10 @@ async function routeMessage(client, message) {
         case "addmoney":
         case "adminadd":
             return (0, addMoney_1.handleAddMoney)(message, args);
+        case "removemoney":
+        case "remove":
+        case "takemoney":
+            return (0, removeMoney_1.handleRemoveMoney)(message, args);
         case "setstartmoney":
         case "setstart":
             return (0, setStartMoney_1.handleSetStartMoney)(message, args);
@@ -133,6 +147,8 @@ async function routeMessage(client, message) {
         case "manageitem":
         case "edititem":
         case "delitem":
+        case "editshop":
+        case "deleteshop":
             return (0, manageShop_1.handleManageShop)(message, args);
         // ----------------
         // Fallback

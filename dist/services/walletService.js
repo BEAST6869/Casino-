@@ -7,7 +7,7 @@ exports.ensureUserAndWallet = ensureUserAndWallet;
 exports.getWalletByDiscord = getWalletByDiscord;
 exports.getWalletById = getWalletById;
 exports.depositToWallet = depositToWallet;
-// src/services/walletService.ts
+exports.removeMoneyFromWallet = removeMoneyFromWallet;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 // User Cache: Stores which Discord IDs we have already verified exist
 // Key = Discord ID, Value = Database ID
@@ -64,6 +64,26 @@ async function depositToWallet(walletId, amount, meta = {}, earned = false) {
     await prisma_1.default.$transaction([
         prisma_1.default.transaction.create({ data: { walletId, amount, type: "deposit", meta, isEarned: earned } }),
         prisma_1.default.wallet.update({ where: { id: walletId }, data: { balance: { increment: amount } } })
+    ]);
+}
+/** Admin remove from wallet */
+async function removeMoneyFromWallet(walletId, amount) {
+    const wallet = await prisma_1.default.wallet.findUnique({ where: { id: walletId } });
+    if (!wallet || wallet.balance < amount)
+        throw new Error("Insufficient wallet funds.");
+    await prisma_1.default.$transaction([
+        prisma_1.default.transaction.create({
+            data: {
+                walletId,
+                amount: -amount,
+                type: "admin_remove",
+                meta: { by: "admin" }
+            }
+        }),
+        prisma_1.default.wallet.update({
+            where: { id: walletId },
+            data: { balance: { decrement: amount } }
+        })
     ]);
 }
 //# sourceMappingURL=walletService.js.map

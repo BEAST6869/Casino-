@@ -7,6 +7,7 @@ exports.ensureBankForUser = ensureBankForUser;
 exports.depositToBank = depositToBank;
 exports.withdrawFromBank = withdrawFromBank;
 exports.getBankByUserId = getBankByUserId;
+exports.removeMoneyFromBank = removeMoneyFromBank;
 // src/services/bankService.ts
 const prisma_1 = __importDefault(require("../utils/prisma"));
 /** ensure bank row by user.id (prisma User.id) */
@@ -56,5 +57,26 @@ async function withdrawFromBank(walletId, userId, amount) {
 }
 async function getBankByUserId(userId) {
     return prisma_1.default.bank.findUnique({ where: { userId } });
+}
+/** Admin remove from bank */
+async function removeMoneyFromBank(userId, amount) {
+    const bank = await ensureBankForUser(userId);
+    if (bank.balance < amount)
+        throw new Error("Insufficient bank funds.");
+    // We need walletId for the transaction log relation
+    const wallet = await prisma_1.default.wallet.findUnique({ where: { userId } });
+    if (!wallet)
+        throw new Error("Wallet not found (DB Error).");
+    await prisma_1.default.$transaction([
+        prisma_1.default.bank.update({ where: { userId }, data: { balance: { decrement: amount } } }),
+        prisma_1.default.transaction.create({
+            data: {
+                walletId: wallet.id,
+                amount: -amount,
+                type: "admin_remove_bank",
+                meta: { by: "admin" }
+            }
+        })
+    ]);
 }
 //# sourceMappingURL=bankService.js.map

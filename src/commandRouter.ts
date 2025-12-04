@@ -19,7 +19,7 @@ import { handleLeaderboard } from "./commands/economy/leaderboard";
 
 // admin
 import { handleAddMoney } from "./commands/admin/addMoney";
-import { handleRemoveMoney } from "./commands/admin/removeMoney"; // <--- Import Added
+import { handleRemoveMoney } from "./commands/admin/removeMoney"; 
 import { handleSetStartMoney } from "./commands/admin/setStartMoney";
 import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
 import { handleResetEconomy } from "./commands/admin/resetEconomy";
@@ -31,6 +31,7 @@ import { handleManageShop } from "./commands/admin/manageShop";
 
 // games
 import { handleBet } from "./commands/games/roulette";
+import { handleBlackjack } from "./commands/games/blackjack"; // <--- Import
 
 export async function routeMessage(client: Client, message: Message) {
   const raw = message.content.slice(1).trim();
@@ -48,13 +49,20 @@ export async function routeMessage(client: Client, message: Message) {
       wd: "withdraw",
       add: "addmoney",
       adminadd: "addmoney",
-      remove: "removemoney", // <--- Alias Added
-      take: "removemoney",   // <--- Alias Added
+      remove: "removemoney",
+      take: "removemoney",
       "setstart": "setstartmoney",
       inv: "inventory",
       lb: "leaderboard",
       top: "leaderboard",
-      rich: "leaderboard"
+      rich: "leaderboard",
+      "lb-wallet": "lb-wallet",
+      lbwallet: "lb-wallet",
+      cashlb: "lb-wallet",
+      roulette: "bet", 
+      roul: "bet",
+      bj: "blackjack", // <--- Alias
+      "21": "blackjack" // <--- Alias
     } as Record<string, string>
   )[command] ?? command);
 
@@ -124,14 +132,19 @@ export async function routeMessage(client: Client, message: Message) {
     // Leaderboard
     // ----------------
     case "leaderboard":
-      // Handles !lb, !top, !rich via alias mapping above
       return handleLeaderboard(message, args);
+
+    case "lb-wallet":
+      return handleLeaderboard(message, ["cash"]);
 
     // ----------------
     // Games
     // ----------------
     case "bet":
       return handleBet(message, args);
+
+    case "blackjack": // <--- Case
+      return handleBlackjack(message, args);
 
     // ----------------
     // Admin
@@ -140,7 +153,7 @@ export async function routeMessage(client: Client, message: Message) {
     case "adminadd":
       return handleAddMoney(message, args);
 
-    case "removemoney":  // <--- Case Added
+    case "removemoney":
     case "remove":
     case "takemoney":
       return handleRemoveMoney(message, args);
@@ -172,7 +185,6 @@ export async function routeMessage(client: Client, message: Message) {
     case "delitem":
     case "editshop":
     case "deleteshop":
-      // All these route to the interactive manager
       return handleManageShop(message, args);
 
     // ----------------
