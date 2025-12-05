@@ -50,20 +50,24 @@ async function handleBlackjack(message, args) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Wager", "Please bet a valid positive amount.")] });
     }
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+    const minBet = config.minBet;
     // Use exact strings provided by user for consistent branding
-    const eCasino = "<:blackjack_21:1446240044917461034>";
+    const eCasino = "<:casino:1445732641545654383>";
     // Robustly resolve the currency emoji for display
     let currencyEmoji = config.currencyEmoji;
     // Helper to ensure we have a valid emoji string for text fields
-    // If config has raw ID "12345", we try to find it or fallback
     if (/^\d+$/.test(currencyEmoji)) {
         const e = message.guild?.emojis.cache.get(currencyEmoji);
         currencyEmoji = e ? e.toString() : "💰";
     }
-    // If it's the animated money ID you provided earlier, construct the string manually if not in cache
-    // This handles the specific case where you set the emoji ID directly
     if (currencyEmoji === "1445732360204193824") {
         currencyEmoji = "<a:money:1445732360204193824>";
+    }
+    // Check Minimum Bet
+    if (amount < minBet) {
+        return message.reply({
+            embeds: [(0, embed_1.errorEmbed)(message.author, "Bet Too Low", `The minimum bet is **${(0, format_1.fmtCurrency)(minBet, currencyEmoji)}**.`)]
+        });
     }
     const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
     if (user.wallet.balance < amount) {
@@ -98,8 +102,6 @@ async function handleBlackjack(message, args) {
             .setTitle(`${eCasino} Blackjack Table`)
             .setColor(gameOver ? (payout > currentBet ? discord_js_1.Colors.Green : (payout === currentBet ? discord_js_1.Colors.Yellow : discord_js_1.Colors.Red)) : discord_js_1.Colors.Blue)
             .addFields({ name: `Your Hand (${pScore})`, value: formatHand(playerHand), inline: true }, { name: `Dealer's Hand (${dScore})`, value: formatHand(dealerHand, !reveal), inline: true });
-        // MOVE BET INFO TO DESCRIPTION (Where emojis work!)
-        // Instead of Footer, we put it here so the animated emoji renders.
         let statusText = `**Bet:** ${(0, format_1.fmtCurrency)(currentBet, currencyEmoji)}`;
         if (gameOver) {
             statusText += `\n\n**${result}**\n${payout > 0 ? `**Payout:** ${(0, format_1.fmtCurrency)(payout, currencyEmoji)}` : ""}`;
@@ -108,7 +110,6 @@ async function handleBlackjack(message, args) {
             statusText += `\n\nChoose an action below.`;
         }
         embed.setDescription(statusText);
-        // Clean Footer (No emoji needed here now)
         embed.setFooter({ text: `${message.author.username}'s Game` });
         return embed;
     };

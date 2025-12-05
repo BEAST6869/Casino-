@@ -30,7 +30,10 @@ const addShopItem_1 = require("./commands/admin/addShopItem");
 const manageShop_1 = require("./commands/admin/manageShop");
 // games
 const roulette_1 = require("./commands/games/roulette");
-const blackjack_1 = require("./commands/games/blackjack"); // <--- Import
+const blackjack_1 = require("./commands/games/blackjack");
+const coinflip_1 = require("./commands/games/coinflip");
+const slots_1 = require("./commands/games/slots");
+const setMinBet_1 = require("./commands/admin/setMinBet");
 async function routeMessage(client, message) {
     const raw = message.content.slice(1).trim();
     const [cmd, ...args] = raw.split(/\s+/);
@@ -39,6 +42,9 @@ async function routeMessage(client, message) {
     const normalized = ({
         dep: "deposit",
         depo: "deposit",
+        me: "profile",
+        userinfo: "profile",
+        p: "profile",
         bal: "balance",
         b: "balance",
         with: "withdraw",
@@ -57,6 +63,7 @@ async function routeMessage(client, message) {
         cashlb: "lb-wallet",
         roulette: "bet",
         roul: "bet",
+        cf: "coinflip",
         bj: "blackjack", // <--- Alias
         "21": "blackjack" // <--- Alias
     }[command] ?? command);
@@ -121,6 +128,10 @@ async function routeMessage(client, message) {
             return (0, roulette_1.handleBet)(message, args);
         case "blackjack": // <--- Case
             return (0, blackjack_1.handleBlackjack)(message, args);
+        case "coinflip": // <--- Case
+            return (0, coinflip_1.handleCoinflip)(message, args);
+        case "slots": // <--- Case
+            return (0, slots_1.handleSlots)(message, args);
         // ----------------
         // Admin
         // ----------------
@@ -140,6 +151,8 @@ async function routeMessage(client, message) {
             return (0, resetEconomy_1.handleResetEconomy)(message, args);
         case "setcurrency":
             return (0, setCurrency_1.handleSetCurrency)(message, args);
+        case "min-bet":
+            return (0, setMinBet_1.handleSetMinBet)(message, args);
         case "adminviewconfig":
         case "viewconfig":
             return (0, viewConfig_1.handleAdminViewConfig)(message, args);

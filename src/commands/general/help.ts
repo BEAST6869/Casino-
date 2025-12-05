@@ -159,6 +159,6 @@ export async function handleHelp(message: Message) {
         );
     }
 
-    await i.reply({ embeds: [embed], ephemeral: false });
+    await i.reply({ embeds: [embed], ephemeral: true });
   });
 }
