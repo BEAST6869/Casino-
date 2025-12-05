@@ -10,13 +10,47 @@ const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
 // --- THE MENU (Guide & Play Info) ---
 async function handleRouletteMenu(message) {
+    // Provided Emoji IDs
+    const idCasino = "1445732641545654383";
+    const idScroll = "1446218234171887760";
+    const idDicesBtn = "1446220119733702767";
+    const idBlackCoin = "1446217613632999565";
+    const idRedCoin = "1446217599439343772";
+    const idDiceSpecific = "1446217848551899300";
+    // Helper to resolve emoji string or fallback
+    const resolveEmoji = (id, fallback) => {
+        const e = message.guild?.emojis.cache.get(id);
+        // If found in cache, use toString() which gives <:name:id> or <a:name:id>
+        // If NOT found, manually construct a static string as a best guess, or fallback
+        return e ? e.toString() : `<:custom:${id}>`;
+    };
+    // Resolve emojis for text (embeds)
+    // We force the construction of the custom emoji string if cache misses, assuming they are static.
+    // If they are animated, this manual construction <:...> might fail to animate, but will show image if static.
+    const eCasino = resolveEmoji(idCasino, "🎰");
+    const eScroll = resolveEmoji(idScroll, "📜");
+    const eRedCoin = resolveEmoji(idRedCoin, "🔴");
+    const eBlackCoin = resolveEmoji(idBlackCoin, "⚫");
+    const eDiceSpecific = resolveEmoji(idDiceSpecific, "🎲");
+    // Resolve IDs for buttons 
+    // ButtonBuilder.setEmoji(id) works best if the emoji is available.
+    const btnScroll = idScroll;
+    const btnDices = idDicesBtn;
     const embed = new discord_js_1.EmbedBuilder()
-        .setTitle("🎰 Roulette Table")
+        .setTitle(`${eCasino} Roulette Table`)
         .setDescription("Welcome to the Casino! Test your luck on the wheel.")
         .setColor(discord_js_1.Colors.Red)
-        .setImage("https://media.tenor.com/7gKkK6W85GgAAAAC/roulette-casino.gif") // Optional: animated gif
+        .setImage("https://media.tenor.com/7gKkK6W85GgAAAAC/roulette-casino.gif")
         .setFooter({ text: "Click 'Guide' for rules or 'Play' to start." });
-    const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId("roul_guide").setLabel("Guide").setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji("📜"), new discord_js_1.ButtonBuilder().setCustomId("roul_play").setLabel("How to Play").setStyle(discord_js_1.ButtonStyle.Success).setEmoji("🎲"));
+    const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
+        .setCustomId("roul_guide")
+        .setLabel("Guide")
+        .setStyle(discord_js_1.ButtonStyle.Secondary)
+        .setEmoji(btnScroll), new discord_js_1.ButtonBuilder()
+        .setCustomId("roul_play")
+        .setLabel("How to Play")
+        .setStyle(discord_js_1.ButtonStyle.Success)
+        .setEmoji(btnDices));
     const sent = await message.reply({ embeds: [embed], components: [row] });
     const collector = sent.createMessageComponentCollector({
         componentType: discord_js_1.ComponentType.Button,
@@ -26,13 +60,16 @@ async function handleRouletteMenu(message) {
     collector.on("collect", async (i) => {
         if (i.customId === "roul_guide") {
             const guideEmbed = new discord_js_1.EmbedBuilder()
-                .setTitle("📜 Roulette Rules")
+                .setTitle(`${eScroll} Roulette Rules`)
                 .setColor(discord_js_1.Colors.Blue)
-                .setDescription("**Multipliers:**\n" +
-                "🔴 **Red / ⚫ Black:** 2x Payout (Win chance ~48.6%)\n" +
-                "🔢 **Specific Number (0-36):** 35x Payout (Win chance ~2.7%)\n" +
-                "🔵 **Odd / 🟡 Even:** 2x Payout\n\n" +
-                "**House Edge:** The green **0** belongs to the house!");
+                .setDescription(`**Multipliers:**\n\n` +
+                `${eRedCoin} **Red / ${eBlackCoin} Black:**\n` +
+                `2x Payout (Win chance ~48.6%)\n\n` +
+                `${eDiceSpecific} **Specific Number (0-36):**\n` +
+                `35x Payout (Win chance ~2.7%)\n\n` +
+                `🔵 **Odd / 🟡 Even:**\n` +
+                `2x Payout\n\n` +
+                `**House Edge:** The green **0** belongs to the house!`);
             await i.reply({ embeds: [guideEmbed], ephemeral: true });
         }
         if (i.customId === "roul_play") {
@@ -48,7 +85,6 @@ async function handleBet(message, args) {
     const amountStr = args[0];
     const choiceRaw = (args[1] || "").toLowerCase();
     if (!amountStr || !choiceRaw) {
-        // If no args, show the menu instead of error
         return handleRouletteMenu(message);
     }
     const amount = parseInt(amountStr);
@@ -65,7 +101,7 @@ async function handleBet(message, args) {
     const spin = Math.floor(Math.random() * 37); // 0-36
     const redNumbers = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
     const isRed = redNumbers.has(spin);
-    const isBlack = !isRed && spin !== 0; // 0 is green
+    const isBlack = !isRed && spin !== 0;
     let didWin = false;
     let multiplier = 0;
     if (choiceRaw === "red") {
@@ -96,7 +132,6 @@ async function handleBet(message, args) {
         }
     }
     const payout = didWin ? Math.floor(amount * multiplier) : 0;
-    // Transaction
     try {
         await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "roulette_v1", amount, choiceRaw, didWin, payout);
     }
@@ -104,14 +139,23 @@ async function handleBet(message, args) {
         await (0, gameService_1.placeBetFallback)(user.wallet.id, user.id, "roulette_v1", amount, choiceRaw, didWin, payout);
     }
     // Result Embed
-    const color = spin === 0 ? "🟢 Green" : (isRed ? "🔴 Red" : "⚫ Black");
+    // Using custom coin emojis for result display if possible, else defaults
+    const idRedCoin = "1446217599439343772";
+    const idBlackCoin = "1446217613632999565";
+    const resolveResultEmoji = (id, fb) => {
+        const e = message.guild?.emojis.cache.get(id);
+        return e ? e.toString() : `<:custom:${id}>`;
+    };
+    const eRed = resolveResultEmoji(idRedCoin, "🔴");
+    const eBlack = resolveResultEmoji(idBlackCoin, "⚫");
+    const displayColor = spin === 0 ? "🟢" : (isRed ? eRed : eBlack);
     const resultEmbed = new discord_js_1.EmbedBuilder()
         .setTitle(didWin ? "🎉 Winner!" : "💀 You Lost")
         .setColor(didWin ? discord_js_1.Colors.Green : discord_js_1.Colors.Red)
-        .setDescription(`**Result:** ${color} **${spin}**\n` +
+        .setDescription(`**Result:** ${displayColor} **${spin}**\n` +
         `**Your Bet:** ${choiceRaw}\n` +
         `**${didWin ? "Won" : "Lost"}:** ${(0, format_1.fmtCurrency)(didWin ? payout : amount, emoji)}`)
-        .setFooter({ text: `${message.author.username}'s Wallet: ${(0, format_1.fmtCurrency)((user.wallet.balance - amount) + payout, emoji)}` });
+        .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet.balance - amount) + payout}` }); // Removed currency emoji from footer as requested
     return message.reply({ embeds: [resultEmbed] });
 }
 //# sourceMappingURL=roulette.js.map

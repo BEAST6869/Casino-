@@ -31,7 +31,10 @@ import { handleManageShop } from "./commands/admin/manageShop";
 
 // games
 import { handleBet } from "./commands/games/roulette";
-import { handleBlackjack } from "./commands/games/blackjack"; // <--- Import
+import { handleBlackjack } from "./commands/games/blackjack"; 
+import { handleCoinflip } from "./commands/games/coinflip";
+import { handleSlots } from "./commands/games/slots";
+import { handleSetMinBet } from "./commands/admin/setMinBet";
 
 export async function routeMessage(client: Client, message: Message) {
   const raw = message.content.slice(1).trim();
@@ -43,6 +46,9 @@ export async function routeMessage(client: Client, message: Message) {
     {
       dep: "deposit",
       depo: "deposit",
+      me: "profile",
+      userinfo: "profile",
+      p: "profile",
       bal: "balance",
       b: "balance",
       with: "withdraw",
@@ -61,6 +67,7 @@ export async function routeMessage(client: Client, message: Message) {
       cashlb: "lb-wallet",
       roulette: "bet", 
       roul: "bet",
+      cf: "coinflip",
       bj: "blackjack", // <--- Alias
       "21": "blackjack" // <--- Alias
     } as Record<string, string>
@@ -146,6 +153,12 @@ export async function routeMessage(client: Client, message: Message) {
     case "blackjack": // <--- Case
       return handleBlackjack(message, args);
 
+    case "coinflip": // <--- Case
+      return handleCoinflip(message, args);
+
+    case "slots": // <--- Case
+      return handleSlots  (message, args);
+
     // ----------------
     // Admin
     // ----------------
@@ -170,6 +183,9 @@ export async function routeMessage(client: Client, message: Message) {
 
     case "setcurrency":
       return handleSetCurrency(message, args);
+
+    case "min-bet":
+      return handleSetMinBet(message, args);
 
     case "adminviewconfig":
     case "viewconfig":

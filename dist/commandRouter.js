@@ -30,6 +30,7 @@ const addShopItem_1 = require("./commands/admin/addShopItem");
 const manageShop_1 = require("./commands/admin/manageShop");
 // games
 const roulette_1 = require("./commands/games/roulette");
+const blackjack_1 = require("./commands/games/blackjack"); // <--- Import
 async function routeMessage(client, message) {
     const raw = message.content.slice(1).trim();
     const [cmd, ...args] = raw.split(/\s+/);
@@ -51,11 +52,13 @@ async function routeMessage(client, message) {
         lb: "leaderboard",
         top: "leaderboard",
         rich: "leaderboard",
-        "lb-wallet": "lb-wallet", // Explicit mapping to preserve the dash command
+        "lb-wallet": "lb-wallet",
         lbwallet: "lb-wallet",
         cashlb: "lb-wallet",
         roulette: "bet",
-        roul: "bet"
+        roul: "bet",
+        bj: "blackjack", // <--- Alias
+        "21": "blackjack" // <--- Alias
     }[command] ?? command);
     switch (normalized) {
         case "addemoji":
@@ -108,16 +111,16 @@ async function routeMessage(client, message) {
         // Leaderboard
         // ----------------
         case "leaderboard":
-            // Standard Net Worth Leaderboard
             return (0, leaderboard_1.handleLeaderboard)(message, args);
         case "lb-wallet":
-            // Forces Cash Leaderboard by injecting the "cash" argument
             return (0, leaderboard_1.handleLeaderboard)(message, ["cash"]);
         // ----------------
         // Games
         // ----------------
         case "bet":
             return (0, roulette_1.handleBet)(message, args);
+        case "blackjack": // <--- Case
+            return (0, blackjack_1.handleBlackjack)(message, args);
         // ----------------
         // Admin
         // ----------------

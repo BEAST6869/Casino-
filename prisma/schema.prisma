@@ -142,10 +142,13 @@ model GuildConfig {
   prefix        String   @default("!")
 
   // --- ROB CONFIGURATION ---
-  robSuccessPct  Int      @default(60)   // Success chance (0-100)
-  robFinePct     Int      @default(20)   // Percentage of robber's wallet lost on failure
-  robCooldown    Int      @default(300)  // Cooldown in seconds (default 5 mins)
-  robImmuneRoles String[] @default([])   // List of Role IDs that cannot be robbed
+  robSuccessPct  Int      @default(60)
+  robFinePct     Int      @default(20)
+  robCooldown    Int      @default(300)
+  robImmuneRoles String[] @default([])
+
+  // --- GAME CONFIGURATION ---
+  minBet         Int      @default(100) // <--- New Field: Default min bet 100
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

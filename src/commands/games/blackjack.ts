@@ -64,24 +64,29 @@ export async function handleBlackjack(message: Message, args: string[]) {
   }
 
   const config = await getGuildConfig(message.guildId!);
+  const minBet = config.minBet;
   
   // Use exact strings provided by user for consistent branding
-  const eCasino = "<:blackjack_21:1446240044917461034>";
+  const eCasino = "<:casino:1445732641545654383>";
   
   // Robustly resolve the currency emoji for display
   let currencyEmoji = config.currencyEmoji;
   
   // Helper to ensure we have a valid emoji string for text fields
-  // If config has raw ID "12345", we try to find it or fallback
   if (/^\d+$/.test(currencyEmoji)) {
       const e = message.guild?.emojis.cache.get(currencyEmoji);
       currencyEmoji = e ? e.toString() : "💰"; 
   }
   
-  // If it's the animated money ID you provided earlier, construct the string manually if not in cache
-  // This handles the specific case where you set the emoji ID directly
   if (currencyEmoji === "1445732360204193824") {
       currencyEmoji = "<a:money:1445732360204193824>";
+  }
+
+  // Check Minimum Bet
+  if (amount < minBet) {
+    return message.reply({ 
+      embeds: [errorEmbed(message.author, "Bet Too Low", `The minimum bet is **${fmtCurrency(minBet, currencyEmoji)}**.`)] 
+    });
   }
 
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
@@ -125,8 +130,6 @@ export async function handleBlackjack(message: Message, args: string[]) {
         { name: `Dealer's Hand (${dScore})`, value: formatHand(dealerHand, !reveal), inline: true }
       );
 
-    // MOVE BET INFO TO DESCRIPTION (Where emojis work!)
-    // Instead of Footer, we put it here so the animated emoji renders.
     let statusText = `**Bet:** ${fmtCurrency(currentBet, currencyEmoji)}`;
 
     if (gameOver) {
@@ -137,7 +140,6 @@ export async function handleBlackjack(message: Message, args: string[]) {
     
     embed.setDescription(statusText);
     
-    // Clean Footer (No emoji needed here now)
     embed.setFooter({ text: `${message.author.username}'s Game` });
 
     return embed;

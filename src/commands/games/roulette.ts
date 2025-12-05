@@ -17,35 +17,17 @@ import { emojiInline } from "../../utils/emojiRegistry";
 
 // --- THE MENU (Guide & Play Info) ---
 export async function handleRouletteMenu(message: Message) {
-  // Provided Emoji IDs
-  const idCasino = "1445732641545654383";
-  const idScroll = "1446218234171887760";
-  const idDicesBtn = "1446220119733702767";
-  const idBlackCoin = "1446217613632999565";
-  const idRedCoin = "1446217599439343772";
-  const idDiceSpecific = "1446217848551899300";
+  // Custom Emojis provided by user
+  const eCasino = "<:casino:1445732641545654383>";
+  const eScroll = "<:scroll:1446218234171887760>";
+  const eDicesBtn = "<:dices:1446220119733702767>";
+  
+  const eBlackCoin = "<:BlackCoin:1446217613632999565>";
+  const eRedCoin = "<:redcoin:1446217599439343772>";
+  const eDiceSpecific = "<:dice:1446217848551899300>";
 
-  // Helper to resolve emoji string or fallback
-  const resolveEmoji = (id: string, fallback: string) => {
-    const e = message.guild?.emojis.cache.get(id);
-    // If found in cache, use toString() which gives <:name:id> or <a:name:id>
-    // If NOT found, manually construct a static string as a best guess, or fallback
-    return e ? e.toString() : `<:custom:${id}>`; 
-  };
-
-  // Resolve emojis for text (embeds)
-  // We force the construction of the custom emoji string if cache misses, assuming they are static.
-  // If they are animated, this manual construction <:...> might fail to animate, but will show image if static.
-  const eCasino = resolveEmoji(idCasino, "🎰");
-  const eScroll = resolveEmoji(idScroll, "📜");
-  const eRedCoin = resolveEmoji(idRedCoin, "🔴");
-  const eBlackCoin = resolveEmoji(idBlackCoin, "⚫");
-  const eDiceSpecific = resolveEmoji(idDiceSpecific, "🎲");
-
-  // Resolve IDs for buttons 
-  // ButtonBuilder.setEmoji(id) works best if the emoji is available.
-  const btnScroll = idScroll; 
-  const btnDices = idDicesBtn;
+  // Helper to extract ID for buttons
+  const parseEmojiId = (str: string) => str.match(/:(\d+)>/)?.[1] ?? (str.match(/^\d+$/) ? str : str);
 
   const embed = new EmbedBuilder()
     .setTitle(`${eCasino} Roulette Table`) 
@@ -59,13 +41,13 @@ export async function handleRouletteMenu(message: Message) {
       .setCustomId("roul_guide")
       .setLabel("Guide")
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji(btnScroll),
+      .setEmoji(parseEmojiId(eScroll)),
     
     new ButtonBuilder()
       .setCustomId("roul_play")
       .setLabel("How to Play")
       .setStyle(ButtonStyle.Success)
-      .setEmoji(btnDices)
+      .setEmoji(parseEmojiId(eDicesBtn))
   );
 
   const sent = await message.reply({ embeds: [embed], components: [row] });
@@ -122,6 +104,14 @@ export async function handleBet(message: Message, args: string[]) {
 
   const config = await getGuildConfig(message.guildId!);
   const emoji = config.currencyEmoji;
+  const minBet = config.minBet; // <--- Fetch Min Bet
+
+  // Check Minimum Bet
+  if (amount < minBet) {
+    return message.reply({ 
+      embeds: [errorEmbed(message.author, "Bet Too Low", `The minimum bet is **${fmtCurrency(minBet, emoji)}**.`)] 
+    });
+  }
 
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
   if (user.wallet!.balance < amount) {
@@ -169,18 +159,9 @@ export async function handleBet(message: Message, args: string[]) {
   }
 
   // Result Embed
-  // Using custom coin emojis for result display if possible, else defaults
-  const idRedCoin = "1446217599439343772";
-  const idBlackCoin = "1446217613632999565";
-  
-  const resolveResultEmoji = (id: string, fb: string) => {
-      const e = message.guild?.emojis.cache.get(id);
-      return e ? e.toString() : `<:custom:${id}>`;
-  };
-
-  const eRed = resolveResultEmoji(idRedCoin, "🔴");
-  const eBlack = resolveResultEmoji(idBlackCoin, "⚫");
-  const displayColor = spin === 0 ? "🟢" : (isRed ? eRed : eBlack);
+  const eRedCoin = "<:redcoin:1446217599439343772>";
+  const eBlackCoin = "<:BlackCoin:1446217613632999565>";
+  const displayColor = spin === 0 ? "🟢" : (isRed ? eRedCoin : eBlackCoin);
 
   const resultEmbed = new EmbedBuilder()
     .setTitle(didWin ? "🎉 Winner!" : "💀 You Lost")
@@ -190,7 +171,8 @@ export async function handleBet(message: Message, args: string[]) {
       `**Your Bet:** ${choiceRaw}\n` +
       `**${didWin ? "Won" : "Lost"}:** ${fmtCurrency(didWin ? payout : amount, emoji)}`
     )
-    .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet!.balance - amount) + payout}` }); // Removed currency emoji from footer as requested
+    // Footer shows only numeric balance (clean look)
+    .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet!.balance - amount) + payout}` });
 
   return message.reply({ embeds: [resultEmbed] });
 }
