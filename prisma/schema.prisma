@@ -35,6 +35,10 @@ model User {
 
   // Ban System
   isBanned    Boolean  @default(false)
+
+  loans       Loan[]
+  investments Investment[]
+  listings    MarketListing[]
 }
 
 model Wallet {
@@ -58,20 +62,13 @@ model Transaction {
   createdAt DateTime @default(now())
 }
 
-model GameSession {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  type      String // e.g. "roulette", "slots", "blackjack"
-  bets      Bet[]
-  createdAt DateTime @default(now())
-}
+
 
 model Bet {
   id        String      @id @default(auto()) @map("_id") @db.ObjectId
   user      User        @relation(fields: [userId], references: [id])
   userId    String      @db.ObjectId
-  game      GameSession @relation(fields: [gameId], references: [id])
-  gameId    String      @db.ObjectId
+  gameId    String
   amount    Int
   choice    String?
   result    String?
@@ -111,6 +108,7 @@ model ShopItem {
   
   // Relations
   inventory    Inventory[]
+  marketListings MarketListing[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -168,6 +166,39 @@ model IncomeConfig {
   @@unique([guildId, commandKey])
 }
 
+
+
+model Loan {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String   @db.ObjectId
+  amount         Int
+  totalRepayment Int      // Principal + Interest
+  interestRate   Int      // Stored as percentage (e.g., 5 for 5%)
+  dueDate        DateTime
+  status         String   // ACTIVE, PAID, DEFAULTED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Investment {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String   @db.ObjectId
+  type         String   // FD, RD
+  amount       Int
+  interestRate Int      // Stored as percentage
+  startDate    DateTime @default(now())
+  maturityDate DateTime
+  status       String   // ACTIVE, COMPLETED, WITHDRAWN
+  
+  // For RDs, we might need to track monthly contributions, but keeping it simple for now (lump sum for simplified RD or just recurring deposits logic handled in service)
+  // Re-reading requirements: "keeping money in FDs RDs etc with interest rates"
+  // Assuming standard fixed deposit behavior.
+  
+  updatedAt    DateTime @updatedAt
+}
+
 model GuildConfig {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   guildId       String   @unique
@@ -177,7 +208,7 @@ model GuildConfig {
   transferTax   Int      @default(0)
   incomeTax     Int      @default(0)
   bankLimit     Int?     @default(1000000)
-  interestRate  Int      @default(0)
+  interestRate  Int      @default(0) // Logic for savings account interest
   prefix        String   @default("!")
   
   // Configs
@@ -188,6 +219,33 @@ model GuildConfig {
   
   minBet         Int      @default(100)
 
+  // Banking System Configs
+  loanInterestRate Int      @default(5)
+  fdInterestRate   Int      @default(10)
+  rdInterestRate   Int      @default(8)
+  loanMaxAmount    Int?     // If null, dynamic based on credit score
+
+  marketTax        Int      @default(5) // % tax on black market sales
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model MarketListing {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId     String
+  seller      User     @relation(fields: [sellerId], references: [id])
+  sellerId    String   @db.ObjectId
+  
+  // Snapshotted item details (in case ShopItem changes or deleted)
+  // But ideally we link to ShopItem to show image/details dynamically.
+  // Converting inventory item to listing.
+  shopItem    ShopItem @relation(fields: [shopItemId], references: [id])
+  shopItemId  String   @db.ObjectId
+  
+  amount      Int
+  totalPrice  Int      // Price for the whole batch
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

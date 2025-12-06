@@ -1,8 +1,21 @@
 // src/services/bankService.ts
 import prisma from "../utils/prisma";
 
-/** ensure bank row by user.id (prisma User.id) */
-export async function ensureBankForUser(userId: string) {
+/** ensure bank row by user.id (prisma User.id) OR discordId */
+export async function ensureBankForUser(userIdOrDiscordId: string) {
+  let userId = userIdOrDiscordId;
+
+  // Check if it's a Discord ID look-alike (digits) or assume it is if not ObjectId format
+  // Better: Try to find user by ID first. If not found, try Discord ID.
+  // Actually, since we have mixed usage, let's just do a robust lookup.
+
+  if (!userIdOrDiscordId.match(/^[0-9a-fA-F]{24}$/)) {
+    // Not an ObjectId, assume Discord ID
+    const user = await prisma.user.findUnique({ where: { discordId: userIdOrDiscordId } });
+    if (!user) throw new Error("User not found for bank creation.");
+    userId = user.id;
+  }
+
   const bank = await prisma.bank.findUnique({ where: { userId } });
   if (bank) return bank;
   return prisma.bank.create({ data: { userId, balance: 0 } });

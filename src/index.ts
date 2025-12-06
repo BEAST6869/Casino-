@@ -17,9 +17,9 @@ import { getGuildConfig } from "./services/guildConfigService";
 import { safeInteractionReply } from "./utils/interactionHelpers";
 import { initEmojiRegistry, listEmojiKeys } from "./utils/emojiRegistry";
 import { setupXpListener } from "./listeners/xpListener";
-
-
-
+import { handleBankInteraction } from "./handlers/bankInteractionHandler";
+import { handleMarketInteraction } from "./handlers/marketInteractionHandler";
+import { initScheduler } from "./scheduler";
 
 // --- load slash commands automatically from src/commands/slash ---
 const slashCommands = new Map<string, any>();
@@ -73,6 +73,7 @@ client.once("ready", async () => {
   console.log("Emoji registry keys:", listEmojiKeys().slice(0, 200));
 
   setupXpListener(client);
+  initScheduler(client);
 
 
   // register slash commands to each guild the bot is in (guild-scoped)
@@ -98,26 +99,33 @@ client.once("ready", async () => {
   }
 });
 
-// interaction (slash) handler
+// interaction (slash & button/modal) handler
 client.on("interactionCreate", async (interaction: Interaction) => {
   try {
-    // Only handle chat input (slash) commands here
-    if (!interaction.isChatInputCommand?.()) return;
-
-    // Narrow for TypeScript
-    const ci = interaction as ChatInputCommandInteraction;
-
-    const module = slashCommands.get(ci.commandName);
-    if (!module) {
-      // Use the chat-input interaction to reply
-      return ci.reply({ content: "Unknown command.", ephemeral: true });
+    // 1. Slash Commands
+    if (interaction.isChatInputCommand()) {
+      const ci = interaction as ChatInputCommandInteraction;
+      const module = slashCommands.get(ci.commandName);
+      if (!module) {
+        return ci.reply({ content: "Unknown command.", ephemeral: true });
+      }
+      return await module.execute(ci);
     }
 
-    await module.execute(ci);
+    // 2. Banking Interactions
+    const id = (interaction as any).customId || "";
+    if (id.startsWith("bank_") || id.startsWith("loan_") || id.startsWith("invest_") || id.startsWith("repay_")) {
+      return await handleBankInteraction(interaction);
+    }
+
+    // 3. Market Interactions
+    if (id.startsWith("market_") || id.startsWith("sell_")) {
+      return await handleMarketInteraction(interaction);
+    }
+
   } catch (err) {
-    console.error("Slash interaction error:", err);
-    // Use safe helper that handles all interaction types
-    await safeInteractionReply(interaction, { content: "Internal error while running command.", ephemeral: true });
+    console.error("Interaction error:", err);
+    await safeInteractionReply(interaction, { content: "Internal error while processing interaction.", ephemeral: true });
   }
 });
 
@@ -158,5 +166,3 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(token);
-
-

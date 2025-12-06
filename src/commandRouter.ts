@@ -16,9 +16,14 @@ import { handleShop } from "./commands/economy/shop";
 import { handleInventory } from "./commands/economy/inventory";
 import { handleProfile } from "./commands/economy/profile";
 import { handleLeaderboard } from "./commands/economy/leaderboard";
+import { execute as handleBank } from "./commands/economy/bank";
+import { execute as handleMarket } from "./commands/economy/market";
+import { handleBankInteraction } from "./handlers/bankInteractionHandler";
+import { handleMarketInteraction } from "./handlers/marketInteractionHandler";
 
 // admin
 import { handleAddMoney } from "./commands/admin/addMoney";
+import { handleSetEconomyConfig } from "./commands/admin/setEconomyConfig";
 import { handleRemoveMoney } from "./commands/admin/removeMoney";
 import { handleSetStartMoney } from "./commands/admin/setStartMoney";
 import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
@@ -32,8 +37,6 @@ import { handleSetTheme } from "./commands/general/setTheme";
 import { handleCasinoBan } from "./commands/admin/casinoBan";
 import { handleCasinoUnban } from "./commands/admin/casinoUnban";
 import { handleCasinoBanList } from "./commands/admin/casinoBanList";
-import prisma from "./utils/prisma";
-import { errorEmbed } from "./utils/embed";
 
 // games
 import { handleBet } from "./commands/games/roulette";
@@ -41,6 +44,8 @@ import { handleBlackjack } from "./commands/games/blackjack";
 import { handleCoinflip } from "./commands/games/coinflip";
 import { handleSlots } from "./commands/games/slots";
 import { handleSetMinBet } from "./commands/admin/setMinBet";
+import prisma from "./utils/prisma";
+import { errorEmbed } from "./utils/embed";
 
 export async function routeMessage(client: Client, message: Message, prefix: string) {
   const raw = message.content.slice(1).trim();
@@ -117,6 +122,9 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     // ----------------
     case "balance":
       return handleBalance(message);
+
+    case "bank":
+      return handleBank(message, args);
 
     case "deposit":
       return handleDeposit(message, args);
@@ -241,6 +249,28 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     case "casino-ban-list":
     case "banlist":
       return handleCasinoBanList(message, args);
+
+    case "bm":
+    case "black-market":
+      return handleMarket(message, args);
+
+    // Economy Configs
+    case "set-loan-interest":
+    case "setloan":
+      return handleSetEconomyConfig(message, args, "loan");
+
+    case "set-fd-interest":
+    case "setfd":
+      return handleSetEconomyConfig(message, args, "fd");
+
+    case "set-rd-interest":
+    case "setrd":
+      return handleSetEconomyConfig(message, args, "rd");
+
+    case "set-tax":
+    case "settax":
+    case "market-tax":
+      return handleSetEconomyConfig(message, args, "tax");
 
     // ----------------
     // Fallback
