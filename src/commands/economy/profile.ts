@@ -1,12 +1,13 @@
-import { 
-  Message, 
-  EmbedBuilder, 
-  Colors, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
-  ButtonStyle, 
-  ComponentType, 
-  ButtonInteraction
+import {
+  Message,
+  EmbedBuilder,
+  Colors,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+  ButtonInteraction,
+  AttachmentBuilder
 } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { getBankByUserId } from "../../services/bankService";
@@ -15,19 +16,20 @@ import { getGuildConfig } from "../../services/guildConfigService";
 import { fmtCurrency } from "../../utils/format";
 import { errorEmbed } from "../../utils/embed";
 import { emojiInline } from "../../utils/emojiRegistry";
+import { generateProfileImage } from "../../services/imageService";
 
 export async function handleProfile(message: Message, args: string[]) {
   try {
     const targetUser = message.mentions.users.first() || message.author;
     if (targetUser.bot) return message.reply({ embeds: [errorEmbed(message.author, "Error", "Bots do not have profiles.")] });
 
-    // 1. Fetch User First (We need the internal database ID for Bank lookup)
+    // 1. Fetch Data
+    // This now returns the full user object including profileTheme
     const user = await ensureUserAndWallet(targetUser.id, targetUser.tag);
 
-    // 2. Now fetch dependent data using the correct IDs
     const [inventory, bank, config] = await Promise.all([
-      getUserInventory(targetUser.id, message.guildId!), 
-      getBankByUserId(user.id), 
+      getUserInventory(targetUser.id, message.guildId!),
+      getBankByUserId(user.id),
       getGuildConfig(message.guildId!)
     ]);
 
@@ -35,41 +37,35 @@ export async function handleProfile(message: Message, args: string[]) {
     const walletBal = user.wallet?.balance ?? 0;
     const bankBal = bank?.balance ?? 0;
 
-    // 3. Calculate Inventory Value
+    // 2. Calculate Stats
     const inventoryValue = inventory.reduce((sum, slot) => {
       return sum + (slot.shopItem.price * slot.amount);
     }, 0);
 
-    // 4. Calculate Net Worth
     const netWorth = walletBal + bankBal + inventoryValue;
 
-    // 5. Resolve Custom Emojis from Guild (fallback to defaults if missing)
-    // Using standard unicode Wallet/Purse emoji if custom 'wallet' not found
-    const eWallet = emojiInline("Wallet", message.guild) || "👛"; 
-    const eBank = emojiInline("bank", message.guild) || "🏦";
+    // 3. Generate Image
+    let attachment: AttachmentBuilder;
+    try {
+      // Pass the theme from the user object
+      attachment = await generateProfileImage(
+        { username: targetUser.username, creditScore: user.creditScore, level: user.level },
+        walletBal,
+        bankBal,
+        netWorth,
+        targetUser.displayAvatarURL({ extension: "png", size: 256 }),
+        user.profileTheme // Pass theme preference
+      );
+    } catch (e) {
+      console.error("Canvas Error:", e);
+      return message.reply("Failed to generate profile image.");
+    }
+
+    // 4. Create Buttons
+    const eWallet = emojiInline("wallet", message.guild) || "👛";
     const eInv = emojiInline("inventory", message.guild) || "🎒";
     const eGraph = emojiInline("graph", message.guild) || "📈";
-    const eCredits = emojiInline("credits", message.guild) || "🏆";
 
-    // 6. Build Profile Embed
-    const embed = new EmbedBuilder()
-      .setTitle(`${targetUser.username}'s Profile`)
-      .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
-      .setColor(Colors.Gold)
-      .addFields(
-        { name: `${eWallet} Wallet`, value: fmtCurrency(walletBal, currencyEmoji), inline: true },
-        { name: `${eBank} Bank`, value: fmtCurrency(bankBal, currencyEmoji), inline: true },
-        { name: `${eInv} Inventory Value`, value: fmtCurrency(inventoryValue, currencyEmoji), inline: true },
-        { name: `${eGraph} Net Worth`, value: fmtCurrency(netWorth, currencyEmoji), inline: true },
-        { name: `${eCredits} Credit Score`, value: `${user.creditScore}`, inline: true }
-      )
-      .setFooter({ text: "Global Economy Stats" })
-      .setTimestamp();
-
-    // 7. Create Buttons with Matching Emojis
-  
-    
-    // Helper to safely extract ID or return unicode char
     const parseEmojiForButton = (str: string) => str.match(/:(\d+)>/)?.[1] ?? (str.match(/^\d+$/) ? str : str);
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -77,8 +73,8 @@ export async function handleProfile(message: Message, args: string[]) {
         .setCustomId("prof_inv")
         .setLabel("Inventory")
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji(parseEmojiForButton(eInv)), 
-      
+        .setEmoji(parseEmojiForButton(eInv)),
+
       new ButtonBuilder()
         .setCustomId("prof_bal")
         .setLabel("Balance")
@@ -86,9 +82,13 @@ export async function handleProfile(message: Message, args: string[]) {
         .setEmoji(parseEmojiForButton(eWallet))
     );
 
-    const sentMsg = await message.reply({ embeds: [embed], components: [row] });
+    // 5. Send Message (Image Only)
+    const sentMsg = await message.reply({
+      files: [attachment],
+      components: [row]
+    });
 
-    // 8. Interaction Collector
+    // 6. Interaction Collector
     const collector = sentMsg.createMessageComponentCollector({
       componentType: ComponentType.Button,
       time: 60_000,
@@ -111,11 +111,12 @@ export async function handleProfile(message: Message, args: string[]) {
 
       if (interaction.customId === "prof_bal") {
         const balEmbed = new EmbedBuilder()
-          .setTitle(`${eGraph} Balance Details`)
+          .setTitle(`${eGraph} Detailed Balance`)
           .setColor(Colors.Green)
           .addFields(
             { name: "Wallet", value: fmtCurrency(walletBal, currencyEmoji), inline: true },
             { name: "Bank", value: fmtCurrency(bankBal, currencyEmoji), inline: true },
+            { name: "Inventory", value: fmtCurrency(inventoryValue, currencyEmoji), inline: true },
             { name: "Net Worth", value: fmtCurrency(netWorth, currencyEmoji), inline: true }
           )
           .setFooter({ text: "Private View" });
@@ -129,8 +130,8 @@ export async function handleProfile(message: Message, args: string[]) {
         const disabledRow = ActionRowBuilder.from(row).setComponents(
           row.components.map(c => ButtonBuilder.from(c).setDisabled(true))
         );
-        sentMsg.edit({ components: [disabledRow as ActionRowBuilder<ButtonBuilder>] }).catch(() => {});
-      } catch {}
+        sentMsg.edit({ components: [disabledRow as ActionRowBuilder<ButtonBuilder>] }).catch(() => { });
+      } catch { }
     });
 
   } catch (err) {

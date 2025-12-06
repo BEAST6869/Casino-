@@ -8,23 +8,30 @@ datasource db {
 }
 
 // Models adapted for MongoDB (ObjectId fields).
-// Note: For one-to-one between User <-> Wallet, the relation fields are defined
-// only on the Wallet side (userId). The User side just references Wallet.
 
 model User {
-  id        String @id @default(auto()) @map("_id") @db.ObjectId
-  discordId String @unique
-  username  String
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  discordId   String @unique
+  username    String
 
-  wallet Wallet?
-  bank   Bank? // <-- inverse relation field (optional)
+  wallet      Wallet?
+  bank        Bank?
 
-  bets Bet[]
   creditScore Int @default(500)
+  
+  // User preferences
+  profileTheme String @default("cyberpunk") 
 
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  bets        Bet[]
+  inventory   Inventory[] // Relation to Inventory items
+  
+  lastDaily   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Leveling
+  xp          Int      @default(0)
+  level       Int      @default(0)
 }
 
 model Wallet {
@@ -44,7 +51,7 @@ model Transaction {
   amount    Int
   type      String   // e.g.: income, admin_add, wallet_to_bank, bank_to_wallet, bet, payout, transfer_sent, transfer_recv
   meta      Json?
-  isEarned  Boolean? @default(false) // <--- NEW: true for income-like txns
+  isEarned  Boolean? @default(false)
   createdAt DateTime @default(now())
 }
 
@@ -61,7 +68,7 @@ model Bet {
   user      User        @relation(fields: [userId], references: [id])
   userId    String      @db.ObjectId
   game      GameSession @relation(fields: [gameId], references: [id])
-  gameId    String      
+  gameId    String      @db.ObjectId
   amount    Int
   choice    String?
   result    String?
@@ -73,8 +80,8 @@ model RoleIncome {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   guildId   String
   roleId    String
-  amount    Int // amount given per claim
-  interval  Int // seconds between claims
+  amount    Int 
+  interval  Int 
   lastClaim DateTime?
   createdAt DateTime  @default(now())
 }
@@ -86,15 +93,51 @@ model Job {
   name        String
   minPay      Int
   maxPay      Int
-  successRate Float? // optional chance param for extras
+  successRate Float?
   cooldown    Int
+}
+
+model ShopItem {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId      String
+  name         String
+  description  String   @default("No description")
+  price        Int
+  stock        Int      @default(-1) // -1 = unlimited
+  roleId       String?  
+  
+  // Relations
+  inventory    Inventory[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// FIX: Added 'user' relation field to match 'inventory' in User model
+model Inventory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId     String
+  
+  // This relation connects back to the User model
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String   @db.ObjectId
+  
+  shopItem    ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+  shopItemId  String   @db.ObjectId
+  
+  amount      Int      @default(1)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, shopItemId])
 }
 
 model Audit {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   guildId   String?
   userId    String?
-  type      String // 'transfer','admin_add','bet','payout','item_buy'...
+  type      String 
   meta      Json?
   createdAt DateTime @default(now())
 }
@@ -109,25 +152,18 @@ model Bank {
 }
 
 model IncomeConfig {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  guildId      String
-  commandKey   String   // work, crime, beg, slut
-
-  minPay       Int
-  maxPay       Int
-  cooldown     Int      // seconds
-
-  // success percentage (0-100). For commands that never fail, set 100.
-  successPct   Int?     @default(100)
-
-  // On failure, penalty = Math.floor(amount * failPenaltyPct / 100)
-  failPenaltyPct Int?   @default(50)
-
-  createdAt    DateTime @default(now())
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId        String
+  commandKey     String   
+  minPay         Int
+  maxPay         Int
+  cooldown       Int      
+  successPct     Int?     @default(100)
+  failPenaltyPct Int?     @default(50)
+  createdAt      DateTime @default(now())
 
   @@unique([guildId, commandKey])
 }
-
 
 model GuildConfig {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -140,53 +176,15 @@ model GuildConfig {
   bankLimit     Int?     @default(1000000)
   interestRate  Int      @default(0)
   prefix        String   @default("!")
-
-  // --- ROB CONFIGURATION ---
+  
+  // Configs
   robSuccessPct  Int      @default(60)
   robFinePct     Int      @default(20)
   robCooldown    Int      @default(300)
   robImmuneRoles String[] @default([])
-
-  // --- GAME CONFIGURATION ---
-  minBet         Int      @default(100) // <--- New Field: Default min bet 100
+  
+  minBet         Int      @default(100)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-
-model ShopItem {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  guildId     String
-  name        String
-  description String   @default("No description")
-  price       Int
-  stock       Int      @default(-1) // -1 means infinite stock
-  roleId      String?  // Optional: Give a role when bought
-  
-  // Relations
-  inventory   Inventory[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model Inventory {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  guildId     String
-  userId      String   // Discord User ID
-  
-  shopItem    ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
-  shopItemId  String   @db.ObjectId
-  
-  amount      Int      @default(1)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([userId, shopItemId]) // Prevents duplicate rows for same item
-}
-
-
-
-

@@ -19,7 +19,7 @@ import { handleLeaderboard } from "./commands/economy/leaderboard";
 
 // admin
 import { handleAddMoney } from "./commands/admin/addMoney";
-import { handleRemoveMoney } from "./commands/admin/removeMoney"; 
+import { handleRemoveMoney } from "./commands/admin/removeMoney";
 import { handleSetStartMoney } from "./commands/admin/setStartMoney";
 import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
 import { handleResetEconomy } from "./commands/admin/resetEconomy";
@@ -28,10 +28,11 @@ import { handleSetCurrencyEmoji } from "./commands/admin/setCurrencyEmoji";
 import { handleAdminViewConfig } from "./commands/admin/viewConfig";
 import { handleAddShopItem } from "./commands/admin/addShopItem";
 import { handleManageShop } from "./commands/admin/manageShop";
+import { handleSetTheme } from "./commands/general/setTheme";
 
 // games
 import { handleBet } from "./commands/games/roulette";
-import { handleBlackjack } from "./commands/games/blackjack"; 
+import { handleBlackjack } from "./commands/games/blackjack";
 import { handleCoinflip } from "./commands/games/coinflip";
 import { handleSlots } from "./commands/games/slots";
 import { handleSetMinBet } from "./commands/admin/setMinBet";
@@ -65,7 +66,7 @@ export async function routeMessage(client: Client, message: Message) {
       "lb-wallet": "lb-wallet",
       lbwallet: "lb-wallet",
       cashlb: "lb-wallet",
-      roulette: "bet", 
+      roulette: "bet",
       roul: "bet",
       cf: "coinflip",
       bj: "blackjack", // <--- Alias
@@ -85,7 +86,7 @@ export async function routeMessage(client: Client, message: Message) {
 
     case "setprefix":
       return handleSetPrefix(message, args);
-    
+
     case "setrob":
     case "configrob":
       return handleSetRob(message, args);
@@ -119,7 +120,7 @@ export async function routeMessage(client: Client, message: Message) {
     case "rob":
     case "steal":
       return handleRob(message, args);
-      
+
     // ----------------
     // Shop & Inventory
     // ----------------
@@ -136,10 +137,16 @@ export async function routeMessage(client: Client, message: Message) {
       return handleProfile(message, args);
 
     // ----------------
-    // Leaderboard
+    // Leaderboard & Levels
     // ----------------
     case "leaderboard":
       return handleLeaderboard(message, args);
+
+    case "rank":
+    case "level":
+    case "lvl":
+      const { rank } = require("./commands/general/rank");
+      return rank(client, message, args);
 
     case "lb-wallet":
       return handleLeaderboard(message, ["cash"]);
@@ -157,7 +164,7 @@ export async function routeMessage(client: Client, message: Message) {
       return handleCoinflip(message, args);
 
     case "slots": // <--- Case
-      return handleSlots  (message, args);
+      return handleSlots(message, args);
 
     // ----------------
     // Admin
@@ -190,7 +197,7 @@ export async function routeMessage(client: Client, message: Message) {
     case "adminviewconfig":
     case "viewconfig":
       return handleAdminViewConfig(message, args);
-    
+
     // Shop Management
     case "shopadd":
     case "addshopitem":
@@ -202,6 +209,9 @@ export async function routeMessage(client: Client, message: Message) {
     case "editshop":
     case "deleteshop":
       return handleManageShop(message, args);
+
+    case "set-theme":
+      return handleSetTheme(message, args);
 
     // ----------------
     // Fallback

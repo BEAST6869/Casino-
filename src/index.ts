@@ -16,6 +16,7 @@ import { routeMessage } from "./commandRouter";
 import { getGuildConfig } from "./services/guildConfigService";
 import { safeInteractionReply } from "./utils/interactionHelpers";
 import { initEmojiRegistry, listEmojiKeys } from "./utils/emojiRegistry";
+import { setupXpListener } from "./listeners/xpListener";
 
 
 
@@ -70,6 +71,8 @@ client.once("ready", async () => {
 
   await initEmojiRegistry(client);
   console.log("Emoji registry keys:", listEmojiKeys().slice(0, 200));
+
+  setupXpListener(client);
 
 
   // register slash commands to each guild the bot is in (guild-scoped)
