@@ -9,14 +9,15 @@ const guildConfigService_1 = require("../../services/guildConfigService");
 const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
 const emojiRegistry_1 = require("../../utils/emojiRegistry");
+const imageService_1 = require("../../services/imageService");
 async function handleProfile(message, args) {
     try {
         const targetUser = message.mentions.users.first() || message.author;
         if (targetUser.bot)
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Error", "Bots do not have profiles.")] });
-        // 1. Fetch User First (We need the internal database ID for Bank lookup)
+        // 1. Fetch Data
+        // This now returns the full user object including profileTheme
         const user = await (0, walletService_1.ensureUserAndWallet)(targetUser.id, targetUser.tag);
-        // 2. Now fetch dependent data using the correct IDs
         const [inventory, bank, config] = await Promise.all([
             (0, shopService_1.getUserInventory)(targetUser.id, message.guildId),
             (0, bankService_1.getBankByUserId)(user.id),
@@ -25,29 +26,26 @@ async function handleProfile(message, args) {
         const currencyEmoji = config.currencyEmoji;
         const walletBal = user.wallet?.balance ?? 0;
         const bankBal = bank?.balance ?? 0;
-        // 3. Calculate Inventory Value
+        // 2. Calculate Stats
         const inventoryValue = inventory.reduce((sum, slot) => {
             return sum + (slot.shopItem.price * slot.amount);
         }, 0);
-        // 4. Calculate Net Worth
         const netWorth = walletBal + bankBal + inventoryValue;
-        // 5. Resolve Custom Emojis from Guild (fallback to defaults if missing)
-        // Using standard unicode Wallet/Purse emoji if custom 'wallet' not found
-        const eWallet = (0, emojiRegistry_1.emojiInline)("Wallet", message.guild) || "👛";
-        const eBank = (0, emojiRegistry_1.emojiInline)("bank", message.guild) || "🏦";
+        // 3. Generate Image
+        let attachment;
+        try {
+            // Pass the theme from the user object
+            attachment = await (0, imageService_1.generateProfileImage)({ username: targetUser.username, creditScore: user.creditScore, level: user.level }, walletBal, bankBal, netWorth, targetUser.displayAvatarURL({ extension: "png", size: 256 }), user.profileTheme // Pass theme preference
+            );
+        }
+        catch (e) {
+            console.error("Canvas Error:", e);
+            return message.reply("Failed to generate profile image.");
+        }
+        // 4. Create Buttons
+        const eWallet = (0, emojiRegistry_1.emojiInline)("wallet", message.guild) || "👛";
         const eInv = (0, emojiRegistry_1.emojiInline)("inventory", message.guild) || "🎒";
         const eGraph = (0, emojiRegistry_1.emojiInline)("graph", message.guild) || "📈";
-        const eCredits = (0, emojiRegistry_1.emojiInline)("credits", message.guild) || "🏆";
-        // 6. Build Profile Embed
-        const embed = new discord_js_1.EmbedBuilder()
-            .setTitle(`${targetUser.username}'s Profile`)
-            .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
-            .setColor(discord_js_1.Colors.Gold)
-            .addFields({ name: `${eWallet} Wallet`, value: (0, format_1.fmtCurrency)(walletBal, currencyEmoji), inline: true }, { name: `${eBank} Bank`, value: (0, format_1.fmtCurrency)(bankBal, currencyEmoji), inline: true }, { name: `${eInv} Inventory Value`, value: (0, format_1.fmtCurrency)(inventoryValue, currencyEmoji), inline: true }, { name: `${eGraph} Net Worth`, value: (0, format_1.fmtCurrency)(netWorth, currencyEmoji), inline: true }, { name: `${eCredits} Credit Score`, value: `${user.creditScore}`, inline: true })
-            .setFooter({ text: "Global Economy Stats" })
-            .setTimestamp();
-        // 7. Create Buttons with Matching Emojis
-        // Helper to safely extract ID or return unicode char
         const parseEmojiForButton = (str) => str.match(/:(\d+)>/)?.[1] ?? (str.match(/^\d+$/) ? str : str);
         const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
             .setCustomId("prof_inv")
@@ -58,8 +56,12 @@ async function handleProfile(message, args) {
             .setLabel("Balance")
             .setStyle(discord_js_1.ButtonStyle.Secondary)
             .setEmoji(parseEmojiForButton(eWallet)));
-        const sentMsg = await message.reply({ embeds: [embed], components: [row] });
-        // 8. Interaction Collector
+        // 5. Send Message (Image Only)
+        const sentMsg = await message.reply({
+            files: [attachment],
+            components: [row]
+        });
+        // 6. Interaction Collector
         const collector = sentMsg.createMessageComponentCollector({
             componentType: discord_js_1.ComponentType.Button,
             time: 60000,
@@ -81,9 +83,9 @@ async function handleProfile(message, args) {
             }
             if (interaction.customId === "prof_bal") {
                 const balEmbed = new discord_js_1.EmbedBuilder()
-                    .setTitle(`${eGraph} Balance Details`)
+                    .setTitle(`${eGraph} Detailed Balance`)
                     .setColor(discord_js_1.Colors.Green)
-                    .addFields({ name: "Wallet", value: (0, format_1.fmtCurrency)(walletBal, currencyEmoji), inline: true }, { name: "Bank", value: (0, format_1.fmtCurrency)(bankBal, currencyEmoji), inline: true }, { name: "Net Worth", value: (0, format_1.fmtCurrency)(netWorth, currencyEmoji), inline: true })
+                    .addFields({ name: "Wallet", value: (0, format_1.fmtCurrency)(walletBal, currencyEmoji), inline: true }, { name: "Bank", value: (0, format_1.fmtCurrency)(bankBal, currencyEmoji), inline: true }, { name: "Inventory", value: (0, format_1.fmtCurrency)(inventoryValue, currencyEmoji), inline: true }, { name: "Net Worth", value: (0, format_1.fmtCurrency)(netWorth, currencyEmoji), inline: true })
                     .setFooter({ text: "Private View" });
                 await interaction.reply({ embeds: [balEmbed], ephemeral: true });
             }

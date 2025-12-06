@@ -100,7 +100,7 @@ async function handleHelp(message) {
                     `\`${prefix}setincomecooldown <cmd> <seconds>\``
             });
         }
-        await i.reply({ embeds: [embed], ephemeral: false });
+        await i.reply({ embeds: [embed], ephemeral: true });
     });
 }
 //# sourceMappingURL=help.js.map

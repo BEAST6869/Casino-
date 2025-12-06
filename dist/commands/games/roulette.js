@@ -11,12 +11,12 @@ const embed_1 = require("../../utils/embed");
 // --- THE MENU (Guide & Play Info) ---
 async function handleRouletteMenu(message) {
     // Custom Emojis provided by user
-    const eCasino = "<:casino:1445732641545654383>";
+    const eCasino = "<a:casino:1445732641545654383>";
     const eScroll = "<:scroll:1446218234171887760>";
     const eDicesBtn = "<:dices:1446220119733702767>";
     const eBlackCoin = "<:BlackCoin:1446217613632999565>";
     const eRedCoin = "<:redcoin:1446217599439343772>";
-    const eDiceSpecific = "<:dice:1446217848551899300>";
+    const eDiceSpecific = "<a:dice:1446217848551899300>";
     // Helper to extract ID for buttons
     const parseEmojiId = (str) => str.match(/:(\d+)>/)?.[1] ?? (str.match(/^\d+$/) ? str : str);
     const embed = new discord_js_1.EmbedBuilder()

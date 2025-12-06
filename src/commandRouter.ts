@@ -29,6 +29,11 @@ import { handleAdminViewConfig } from "./commands/admin/viewConfig";
 import { handleAddShopItem } from "./commands/admin/addShopItem";
 import { handleManageShop } from "./commands/admin/manageShop";
 import { handleSetTheme } from "./commands/general/setTheme";
+import { handleCasinoBan } from "./commands/admin/casinoBan";
+import { handleCasinoUnban } from "./commands/admin/casinoUnban";
+import { handleCasinoBanList } from "./commands/admin/casinoBanList";
+import prisma from "./utils/prisma";
+import { errorEmbed } from "./utils/embed";
 
 // games
 import { handleBet } from "./commands/games/roulette";
@@ -37,10 +42,22 @@ import { handleCoinflip } from "./commands/games/coinflip";
 import { handleSlots } from "./commands/games/slots";
 import { handleSetMinBet } from "./commands/admin/setMinBet";
 
-export async function routeMessage(client: Client, message: Message) {
+export async function routeMessage(client: Client, message: Message, prefix: string) {
   const raw = message.content.slice(1).trim();
   const [cmd, ...args] = raw.split(/\s+/);
   const command = cmd.toLowerCase();
+
+  // Ban Check Middleware
+  if (message.author.id) {
+    const user = await prisma.user.findUnique({ where: { discordId: message.author.id } });
+    if (user?.isBanned) {
+      // Allow them to see help, or maybe nothing? Sticking to "nothing" or specific reject message.
+      // Let's explicitly reject.
+      return message.reply({
+        embeds: [errorEmbed(message.author, "Banned", "🚫 You are banned from the casino.")]
+      });
+    }
+  }
 
   // Aliases mapping
   const normalized = ((
@@ -213,12 +230,24 @@ export async function routeMessage(client: Client, message: Message) {
     case "set-theme":
       return handleSetTheme(message, args);
 
+    case "casino-ban":
+    case "banuser":
+      return handleCasinoBan(message, args);
+
+    case "casino-unban":
+    case "unbanuser":
+      return handleCasinoUnban(message, args);
+
+    case "casino-ban-list":
+    case "banlist":
+      return handleCasinoBanList(message, args);
+
     // ----------------
     // Fallback
     // ----------------
     default:
       return message.reply(
-        "Unknown command. Try: `!bal`, `!shop`, `!inv`, `!help`."
+        `Unknown command. Try: \`${prefix}bal\`, \`${prefix}shop\`, \`${prefix}inv\`, \`${prefix}help\`.`
       );
   }
 }

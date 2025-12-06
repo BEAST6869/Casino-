@@ -13,6 +13,7 @@ const commandRouter_1 = require("./commandRouter");
 const guildConfigService_1 = require("./services/guildConfigService");
 const interactionHelpers_1 = require("./utils/interactionHelpers");
 const emojiRegistry_1 = require("./utils/emojiRegistry");
+const xpListener_1 = require("./listeners/xpListener");
 // --- load slash commands automatically from src/commands/slash ---
 const slashCommands = new Map();
 const slashData = [];
@@ -60,6 +61,7 @@ client.once("ready", async () => {
     }
     await (0, emojiRegistry_1.initEmojiRegistry)(client);
     console.log("Emoji registry keys:", (0, emojiRegistry_1.listEmojiKeys)().slice(0, 200));
+    (0, xpListener_1.setupXpListener)(client);
     // register slash commands to each guild the bot is in (guild-scoped)
     if (slashData.length > 0) {
         const rest = new discord_js_1.REST({ version: "10" }).setToken(token);

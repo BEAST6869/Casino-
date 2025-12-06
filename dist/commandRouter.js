@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.routeMessage = routeMessage;
 const help_1 = require("./commands/general/help");
@@ -28,6 +31,11 @@ const setCurrencyEmoji_1 = require("./commands/admin/setCurrencyEmoji");
 const viewConfig_1 = require("./commands/admin/viewConfig");
 const addShopItem_1 = require("./commands/admin/addShopItem");
 const manageShop_1 = require("./commands/admin/manageShop");
+const setTheme_1 = require("./commands/general/setTheme");
+const casinoBan_1 = require("./commands/admin/casinoBan");
+const casinoUnban_1 = require("./commands/admin/casinoUnban");
+const prisma_1 = __importDefault(require("./utils/prisma"));
+const embed_1 = require("./utils/embed");
 // games
 const roulette_1 = require("./commands/games/roulette");
 const blackjack_1 = require("./commands/games/blackjack");
@@ -38,6 +46,17 @@ async function routeMessage(client, message) {
     const raw = message.content.slice(1).trim();
     const [cmd, ...args] = raw.split(/\s+/);
     const command = cmd.toLowerCase();
+    // Ban Check Middleware
+    if (message.author.id) {
+        const user = await prisma_1.default.user.findUnique({ where: { discordId: message.author.id } });
+        if (user?.isBanned) {
+            // Allow them to see help, or maybe nothing? Sticking to "nothing" or specific reject message.
+            // Let's explicitly reject.
+            return message.reply({
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Banned", "🚫 You are banned from the casino.")]
+            });
+        }
+    }
     // Aliases mapping
     const normalized = ({
         dep: "deposit",
@@ -115,10 +134,15 @@ async function routeMessage(client, message) {
         case "userinfo":
             return (0, profile_1.handleProfile)(message, args);
         // ----------------
-        // Leaderboard
+        // Leaderboard & Levels
         // ----------------
         case "leaderboard":
             return (0, leaderboard_1.handleLeaderboard)(message, args);
+        case "rank":
+        case "level":
+        case "lvl":
+            const { rank } = require("./commands/general/rank");
+            return rank(client, message, args);
         case "lb-wallet":
             return (0, leaderboard_1.handleLeaderboard)(message, ["cash"]);
         // ----------------
@@ -166,6 +190,14 @@ async function routeMessage(client, message) {
         case "editshop":
         case "deleteshop":
             return (0, manageShop_1.handleManageShop)(message, args);
+        case "set-theme":
+            return (0, setTheme_1.handleSetTheme)(message, args);
+        case "casinoban":
+        case "banuser":
+            return (0, casinoBan_1.handleCasinoBan)(message, args);
+        case "casinounban":
+        case "unbanuser":
+            return (0, casinoUnban_1.handleCasinoUnban)(message, args);
         // ----------------
         // Fallback
         // ----------------

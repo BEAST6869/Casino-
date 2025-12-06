@@ -14,7 +14,7 @@ async function handleLeaderboard(message, args) {
     const emoji = config.currencyEmoji;
     // 1. Get custom emojis for UI elements
     const eGraphRaw = (0, emojiRegistry_1.emojiInline)("graph", message.guild) || "📈";
-    const eWalletRaw = (0, emojiRegistry_1.emojiInline)("Wallet", message.guild) || "👛";
+    const eWalletRaw = (0, emojiRegistry_1.emojiInline)("wallet", message.guild) || "👛";
     // 2. Get custom medal emojis (Fallback to unicode if not found)
     const eMedal1 = (0, emojiRegistry_1.emojiInline)("medal1", message.guild) || "🥇";
     const eMedal2 = (0, emojiRegistry_1.emojiInline)("medal2", message.guild) || "🥈";
@@ -23,98 +23,110 @@ async function handleLeaderboard(message, args) {
     const parseBtnEmoji = (raw) => raw.match(/:(\d+)>/)?.[1] ?? (raw.match(/^\d+$/) ? raw : raw);
     const btnGraph = parseBtnEmoji(eGraphRaw);
     const btnWallet = parseBtnEmoji(eWalletRaw);
-    // Determine type: "cash" or "net" (default)
-    const type = args[0]?.toLowerCase() === "cash" ? "cash" : "net";
+    // Determine type: "cash", "net", or "level"
+    let initialType = "net";
+    if (args[0]?.toLowerCase() === "cash")
+        initialType = "cash";
+    if (args[0]?.toLowerCase() === "level" || args[0]?.toLowerCase() === "xp")
+        initialType = "level";
+    // Track current state
+    let currentType = initialType;
     // Fetch top users
     const users = await prisma_1.default.user.findMany({
         include: { wallet: true, bank: true },
     });
-    // Sort logic
-    const sorted = users.sort((a, b) => {
-        const netA = (a.wallet?.balance ?? 0) + (type === "net" ? (a.bank?.balance ?? 0) : 0);
-        const netB = (b.wallet?.balance ?? 0) + (type === "net" ? (b.bank?.balance ?? 0) : 0);
-        return netB - netA;
-    });
-    const top10 = sorted.slice(0, 10);
-    const description = top10.map((u, i) => {
-        const val = (u.wallet?.balance ?? 0) + (type === "net" ? (u.bank?.balance ?? 0) : 0);
-        // Medal Logic using custom server emojis
-        let rankDisplay = `**${i + 1}.**`;
-        if (i === 0)
-            rankDisplay = eMedal1;
-        if (i === 1)
-            rankDisplay = eMedal2;
-        if (i === 2)
-            rankDisplay = eMedal3;
-        return `${rankDisplay} **${u.username}** — ${(0, format_1.fmtCurrency)(val, emoji)}`;
-    }).join("\n");
-    const title = type === "net" ? `${eGraphRaw} Net Worth Leaderboard` : `${eWalletRaw} Cash Leaderboard`;
+    const getSorted = (t) => {
+        return [...users].sort((a, b) => {
+            if (t === "level") {
+                // Sort by level desc, then xp desc
+                if (b.level !== a.level)
+                    return b.level - a.level;
+                return b.xp - a.xp;
+            }
+            const netA = (a.wallet?.balance ?? 0) + (t === "net" ? (a.bank?.balance ?? 0) : 0);
+            const netB = (b.wallet?.balance ?? 0) + (t === "net" ? (b.bank?.balance ?? 0) : 0);
+            return netB - netA;
+        });
+    };
+    const getEmbedData = (t, sortedUsers) => {
+        const top10 = sortedUsers.slice(0, 10);
+        const desc = top10.map((u, i) => {
+            let valStr = "";
+            if (t === "level") {
+                valStr = `Level ${u.level} (${u.xp} XP)`;
+            }
+            else {
+                const val = (u.wallet?.balance ?? 0) + (t === "net" ? (u.bank?.balance ?? 0) : 0);
+                valStr = (0, format_1.fmtCurrency)(val, emoji);
+            }
+            // Medal Logic
+            let rankDisplay = `**${i + 1}.**`;
+            if (i === 0)
+                rankDisplay = eMedal1;
+            if (i === 1)
+                rankDisplay = eMedal2;
+            if (i === 2)
+                rankDisplay = eMedal3;
+            return `${rankDisplay} **${u.username}** — ${valStr}`;
+        }).join("\n");
+        let title = "";
+        if (t === "net")
+            title = `${eGraphRaw} Net Worth Leaderboard`;
+        else if (t === "cash")
+            title = `${eWalletRaw} Cash Leaderboard`;
+        else
+            title = `⭐ Level Leaderboard`;
+        return { title, desc, topUsers: top10 }; // Return topUsers if needed elsewhere
+    };
+    const initialSorted = getSorted(currentType);
+    const { title, desc } = getEmbedData(currentType, initialSorted);
     const embed = new discord_js_1.EmbedBuilder()
         .setTitle(title)
         .setColor(discord_js_1.Colors.Gold)
-        .setDescription(description || "No users found.")
-        .setFooter({ text: "Top 10 Richest Users" });
-    // Buttons to toggle view
-    const netButton = new discord_js_1.ButtonBuilder()
-        .setCustomId("lb_net")
-        .setLabel("Net Worth")
-        .setStyle(type === "net" ? discord_js_1.ButtonStyle.Primary : discord_js_1.ButtonStyle.Secondary);
-    const cashButton = new discord_js_1.ButtonBuilder()
-        .setCustomId("lb_cash")
-        .setLabel("Cash Only")
-        .setStyle(type === "cash" ? discord_js_1.ButtonStyle.Primary : discord_js_1.ButtonStyle.Secondary);
-    // Apply emojis to buttons safely
-    try {
-        netButton.setEmoji(btnGraph);
-    }
-    catch {
-        netButton.setEmoji("📈");
-    }
-    try {
-        cashButton.setEmoji(btnWallet);
-    }
-    catch {
-        cashButton.setEmoji("👛");
-    }
-    const row = new discord_js_1.ActionRowBuilder().addComponents(netButton, cashButton);
-    const sent = await message.reply({ embeds: [embed], components: [row] });
+        .setDescription(desc || "No users found.")
+        .setFooter({ text: "Top 10 Leaders" });
+    // Buttons
+    const getButtons = (activeType) => {
+        const bNet = new discord_js_1.ButtonBuilder().setCustomId("lb_net").setLabel("Net Worth").setStyle(activeType === "net" ? discord_js_1.ButtonStyle.Primary : discord_js_1.ButtonStyle.Secondary);
+        const bCash = new discord_js_1.ButtonBuilder().setCustomId("lb_cash").setLabel("Cash Only").setStyle(activeType === "cash" ? discord_js_1.ButtonStyle.Primary : discord_js_1.ButtonStyle.Secondary);
+        const bLevel = new discord_js_1.ButtonBuilder().setCustomId("lb_level").setLabel("Levels").setStyle(activeType === "level" ? discord_js_1.ButtonStyle.Primary : discord_js_1.ButtonStyle.Secondary);
+        try {
+            bNet.setEmoji(btnGraph);
+        }
+        catch {
+            bNet.setEmoji("📈");
+        }
+        try {
+            bCash.setEmoji(btnWallet);
+        }
+        catch {
+            bCash.setEmoji("👛");
+        }
+        try {
+            bLevel.setEmoji("⭐");
+        }
+        catch { }
+        return new discord_js_1.ActionRowBuilder().addComponents(bNet, bCash, bLevel);
+    };
+    const sent = await message.reply({ embeds: [embed], components: [getButtons(currentType)] });
     // Interactive Switching
     const collector = sent.createMessageComponentCollector({ componentType: discord_js_1.ComponentType.Button, time: 60000 });
     collector.on("collect", async (i) => {
-        const newType = i.customId === "lb_net" ? "net" : "cash";
-        // Re-sort based on new selection
-        const newSorted = users.sort((a, b) => {
-            const netA = (a.wallet?.balance ?? 0) + (newType === "net" ? (a.bank?.balance ?? 0) : 0);
-            const netB = (b.wallet?.balance ?? 0) + (newType === "net" ? (b.bank?.balance ?? 0) : 0);
-            return netB - netA;
-        });
-        const newTop = newSorted.slice(0, 10);
-        const newDesc = newTop.map((u, idx) => {
-            const val = (u.wallet?.balance ?? 0) + (newType === "net" ? (u.bank?.balance ?? 0) : 0);
-            let rankDisplay = `**${idx + 1}.**`;
-            if (idx === 0)
-                rankDisplay = eMedal1;
-            if (idx === 1)
-                rankDisplay = eMedal2;
-            if (idx === 2)
-                rankDisplay = eMedal3;
-            return `${rankDisplay} **${u.username}** — ${(0, format_1.fmtCurrency)(val, emoji)}`;
-        }).join("\n");
-        const newTitle = newType === "net" ? `${eGraphRaw} Net Worth Leaderboard` : `${eWalletRaw} Cash Leaderboard`;
+        if (i.customId === "lb_net")
+            currentType = "net";
+        if (i.customId === "lb_cash")
+            currentType = "cash";
+        if (i.customId === "lb_level")
+            currentType = "level";
+        const newSorted = getSorted(currentType);
+        const { title: newTitle, desc: newDesc } = getEmbedData(currentType, newSorted);
         embed.setTitle(newTitle).setDescription(newDesc);
-        // Update button styles to show active state
-        netButton.setStyle(newType === "net" ? discord_js_1.ButtonStyle.Primary : discord_js_1.ButtonStyle.Secondary);
-        cashButton.setStyle(newType === "cash" ? discord_js_1.ButtonStyle.Primary : discord_js_1.ButtonStyle.Secondary);
-        // Reconstruct row with updated button styles
-        const newRow = new discord_js_1.ActionRowBuilder().addComponents(netButton, cashButton);
-        await i.update({ embeds: [embed], components: [newRow] });
+        await i.update({ embeds: [embed], components: [getButtons(currentType)] });
     });
     collector.on("end", () => {
-        // Disable buttons on timeout
         try {
-            netButton.setDisabled(true);
-            cashButton.setDisabled(true);
-            const disabledRow = new discord_js_1.ActionRowBuilder().addComponents(netButton, cashButton);
+            const disabledRow = getButtons(currentType);
+            disabledRow.components.forEach(c => c.setDisabled(true));
             sent.edit({ components: [disabledRow] }).catch(() => { });
         }
         catch { }

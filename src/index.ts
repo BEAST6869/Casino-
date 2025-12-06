@@ -142,7 +142,7 @@ client.on("messageCreate", async (message) => {
     try {
       // mutate for compatibility with your router (it reads message.content)
       (message as any).content = "!" + contentWithoutPrefix;
-      await routeMessage(client, message);
+      await routeMessage(client, message, prefix);
     } finally {
       // restore original content
       (message as any).content = originalContent;

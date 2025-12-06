@@ -87,6 +87,7 @@ async function buyItem(guildId, userId, itemName) {
     // 2. Transaction: Deduct Money -> Add to Inventory -> Audit Log
     return prisma_1.default.$transaction(async (tx) => {
         // Check Balance
+        // Note: userId passed here is DiscordID. We must find the User record.
         const user = await tx.user.findUnique({ where: { discordId: userId }, include: { wallet: true } });
         if (!user || !user.wallet || user.wallet.balance < item.price) {
             throw new Error(`You need ${item.price} coins to buy this.`);
@@ -104,9 +105,10 @@ async function buyItem(guildId, userId, itemName) {
             });
         }
         // Add to Inventory (Upsert = Create if new, Update if exists)
+        // We use the User's internal ObjectId for the relation
         await tx.inventory.upsert({
-            where: { userId_shopItemId: { userId, shopItemId: item.id } },
-            create: { guildId, userId, shopItemId: item.id, amount: 1 },
+            where: { userId_shopItemId: { userId: user.id, shopItemId: item.id } },
+            create: { guildId, userId: user.id, shopItemId: item.id, amount: 1 },
             update: { amount: { increment: 1 } }
         });
         // Log Transaction
@@ -124,10 +126,18 @@ async function buyItem(guildId, userId, itemName) {
 }
 /**
  * Get a user's inventory for a specific guild
+ * FIX: Accepts Discord ID but queries via the User relation
  */
-async function getUserInventory(userId, guildId) {
+async function getUserInventory(discordId, guildId) {
+    // We can't query 'userId' directly with discordId because userId is an ObjectId.
+    // Instead, we query where the related 'user' has the matching 'discordId'.
     return prisma_1.default.inventory.findMany({
-        where: { userId, guildId },
+        where: {
+            guildId,
+            user: {
+                discordId: discordId
+            }
+        },
         include: { shopItem: true }
     });
 }
