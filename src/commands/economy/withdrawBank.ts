@@ -3,7 +3,8 @@ import { ensureUserAndWallet } from "../../services/walletService";
 import { withdrawFromBank, getBankByUserId } from "../../services/bankService";
 import { getGuildConfig } from "../../services/guildConfigService"; // Import
 import { successEmbed, errorEmbed } from "../../utils/embed";
-import { fmtCurrency } from "../../utils/format"; // Import fmtCurrency
+import { fmtCurrency } from "../../utils/format";
+import { logToChannel } from "../../utils/discordLogger"; // Import fmtCurrency
 
 export async function handleWithdrawBank(message: Message, args: string[]) {
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
@@ -26,6 +27,15 @@ export async function handleWithdrawBank(message: Message, args: string[]) {
   try {
     await withdrawFromBank(user.wallet!.id, user.id, amount);
     const updated = await getBankByUserId(user.id);
+
+    // Log Withdraw
+    await logToChannel(message.client, {
+      guild: message.guild!,
+      type: "ECONOMY",
+      title: "Bank Withdraw",
+      description: `**User:** ${message.author.tag}\n**Amount:** ${fmtCurrency(amount, emoji)}\n**New Balance:** ${fmtCurrency(updated?.balance ?? 0, emoji)}`,
+      color: 0x00AAFF
+    });
 
     return message.reply({
       embeds: [

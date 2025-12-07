@@ -90,7 +90,9 @@ export async function repayLoan(discordId: string, amount: number) {
     if (!loan) throw new Error("No active loan found.");
 
     const bank = await ensureBankForUser(discordId); // ensureBank uses discordId, so this is fine
-    if (bank.balance < amount) throw new Error("Insufficient bank balance to repay loan.");
+    if (bank.balance < amount) {
+        throw new Error("Insufficient bank balance. Please deposit money first using `!deposit`.");
+    }
 
     let newStatus = "ACTIVE";
     let remaining = loan.totalRepayment - amount;
@@ -248,7 +250,7 @@ export async function processAllInvestments() {
 export async function getFinancialSummary(discordId: string) {
     const user = await prisma.user.findUnique({
         where: { discordId },
-        include: { bank: true }
+        include: { bank: true, wallet: true } // Include wallet
     });
 
     // If user doesn't exist, return defaults or throw? 
@@ -265,8 +267,11 @@ export async function getFinancialSummary(discordId: string) {
     const loan = await prisma.loan.findFirst({ where: { userId: user.id, status: "ACTIVE" } });
     const investments = await prisma.investment.findMany({ where: { userId: user.id, status: "ACTIVE" } });
 
+    // Calculate total investment value (Principal)
+    const investmentValue = investments.reduce((sum, inv) => sum + inv.amount, 0);
+
     return {
-        netWorth: (user.bank?.balance || 0),
+        netWorth: (user.bank?.balance || 0) + (user.wallet?.balance || 0) + investmentValue,
         creditScore: user.creditScore,
         activeLoan: loan,
         investments

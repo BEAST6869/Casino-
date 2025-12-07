@@ -4,6 +4,7 @@ import { runIncomeCommand } from "../../services/incomeService";
 import { getGuildConfig } from "../../services/guildConfigService"; // Cached Config
 import { successEmbed, errorEmbed } from "../../utils/embed";
 import { fmtCurrency } from "../../utils/format";
+import { logToChannel } from "../../utils/discordLogger";
 
 export async function handleIncome(message: Message) {
   const [cmd] = message.content.slice(1).split(/\s+/);
@@ -29,12 +30,30 @@ export async function handleIncome(message: Message) {
     });
 
     if (res.success) {
-      return message.reply({ 
-        embeds: [successEmbed(message.author, `${commandKey.toUpperCase()} SUCCESS`, `You earned **${fmtCurrency(res.amount, emoji)}**!`)] 
+      // Log Success
+      await logToChannel(message.client, {
+        guild: message.guild!,
+        type: "ECONOMY",
+        title: `Income Success (${commandKey})`,
+        description: `**User:** ${message.author.tag}\n**Amount:** ${fmtCurrency(res.amount, emoji)}`,
+        color: 0x00FF00
+      });
+
+      return message.reply({
+        embeds: [successEmbed(message.author, `${commandKey.toUpperCase()} SUCCESS`, `You earned **${fmtCurrency(res.amount, emoji)}**!`)]
       });
     } else {
-      return message.reply({ 
-        embeds: [errorEmbed(message.author, `${commandKey.toUpperCase()} FAILED`, `You lost **${fmtCurrency(Math.abs(res.amount), emoji)}**!`)] 
+      // Log Failure (Penalty)
+      await logToChannel(message.client, {
+        guild: message.guild!,
+        type: "ECONOMY",
+        title: `Income Failed (${commandKey})`,
+        description: `**User:** ${message.author.tag}\n**Penalty:** ${fmtCurrency(Math.abs(res.amount), emoji)}`,
+        color: 0xFF0000
+      });
+
+      return message.reply({
+        embeds: [errorEmbed(message.author, `${commandKey.toUpperCase()} FAILED`, `You lost **${fmtCurrency(Math.abs(res.amount), emoji)}**!`)]
       });
     }
   } catch (err) {

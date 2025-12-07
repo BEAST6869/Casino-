@@ -1,0 +1,31 @@
+
+import { Message } from "discord.js";
+import { setRoleIncome } from "../../services/roleIncomeService";
+import { successEmbed, errorEmbed } from "../../utils/embed";
+import { parseDuration, formatDuration } from "../../utils/format";
+
+export async function handleSetRoleIncome(message: Message, args: string[]) {
+    if (!message.guild) return;
+
+    if (!message.member?.permissions.has("Administrator")) {
+        return message.reply({ embeds: [errorEmbed(message.author, "Access Denied", "Admins only.")] });
+    }
+
+    // Args: <@Role> <amount> [cooldown]
+    const role = message.mentions.roles.first();
+    const amount = parseInt(args[1]);
+
+    // Parse duration from remaining args
+    const timeArgs = args.slice(2).join(" ");
+    const cooldown = timeArgs ? parseDuration(timeArgs) : 86400; // Default 24h
+
+    if (!role || isNaN(amount) || cooldown === null) {
+        return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!set-role-income @Role <amount> [cooldown]`\nExample: `!set-role-income @VIP 1000 1d 12h`")] });
+    }
+
+    await setRoleIncome(message.guild.id, role.id, amount, cooldown);
+
+    return message.reply({
+        embeds: [successEmbed(message.author, "Income Set", `Set income for **${role.name}** to **${amount}** every **${formatDuration(cooldown * 1000)}**.`)]
+    });
+}

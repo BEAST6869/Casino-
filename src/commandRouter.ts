@@ -24,7 +24,9 @@ import { handleMarketInteraction } from "./handlers/marketInteractionHandler";
 // admin
 import { handleAddMoney } from "./commands/admin/addMoney";
 import { handleSetEconomyConfig } from "./commands/admin/setEconomyConfig";
+import { handleSetRoleIncome } from "./commands/admin/setRoleIncome";
 import { handleRemoveMoney } from "./commands/admin/removeMoney";
+import { handleCollectRoleIncome } from "./commands/economy/collect";
 import { handleSetStartMoney } from "./commands/admin/setStartMoney";
 import { handleSetIncomeCooldown } from "./commands/admin/setIncomeCooldown";
 import { handleResetEconomy } from "./commands/admin/resetEconomy";
@@ -37,6 +39,8 @@ import { handleSetTheme } from "./commands/general/setTheme";
 import { handleCasinoBan } from "./commands/admin/casinoBan";
 import { handleCasinoUnban } from "./commands/admin/casinoUnban";
 import { handleCasinoBanList } from "./commands/admin/casinoBanList";
+import { handleSetGameCooldown } from "./commands/admin/setGameCooldown";
+import { handleSetLogChannel } from "./commands/admin/setLogChannel";
 
 // games
 import { handleBet } from "./commands/games/roulette";
@@ -56,8 +60,6 @@ export async function routeMessage(client: Client, message: Message, prefix: str
   if (message.author.id) {
     const user = await prisma.user.findUnique({ where: { discordId: message.author.id } });
     if (user?.isBanned) {
-      // Allow them to see help, or maybe nothing? Sticking to "nothing" or specific reject message.
-      // Let's explicitly reject.
       return message.reply({
         embeds: [errorEmbed(message.author, "Banned", "🚫 You are banned from the casino.")]
       });
@@ -91,8 +93,8 @@ export async function routeMessage(client: Client, message: Message, prefix: str
       roulette: "bet",
       roul: "bet",
       cf: "coinflip",
-      bj: "blackjack", // <--- Alias
-      "21": "blackjack" // <--- Alias
+      bj: "blackjack",
+      "21": "blackjack"
     } as Record<string, string>
   )[command] ?? command);
 
@@ -133,7 +135,11 @@ export async function routeMessage(client: Client, message: Message, prefix: str
       return handleWithdrawBank(message, args);
 
     case "transfer":
+    case "give":
       return handleTransfer(message, args);
+
+    case "collect":
+      return handleCollectRoleIncome(message, args);
 
     // Income
     case "work":
@@ -182,13 +188,13 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     case "bet":
       return handleBet(message, args);
 
-    case "blackjack": // <--- Case
+    case "blackjack":
       return handleBlackjack(message, args);
 
-    case "coinflip": // <--- Case
+    case "coinflip":
       return handleCoinflip(message, args);
 
-    case "slots": // <--- Case
+    case "slots":
       return handleSlots(message, args);
 
     // ----------------
@@ -207,7 +213,8 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     case "setstart":
       return handleSetStartMoney(message, args);
 
-    case "setincomecooldown":
+    case "set-income-cooldown":
+    case "set-income-cd":
       return handleSetIncomeCooldown(message, args);
 
     case "reseteconomy":
@@ -271,6 +278,16 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     case "settax":
     case "market-tax":
       return handleSetEconomyConfig(message, args, "tax");
+
+    case "set-role-income":
+      return handleSetRoleIncome(message, args);
+
+    case "set-game-cooldown":
+    case "game-cd":
+      return handleSetGameCooldown(message, args);
+
+    case "set-log-channel":
+      return handleSetLogChannel(message, args);
 
     // ----------------
     // Fallback

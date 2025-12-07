@@ -1,3 +1,4 @@
+
 import {
   Message,
   EmbedBuilder,
@@ -5,7 +6,6 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   ComponentType,
-  StringSelectMenuInteraction,
   Colors,
   PermissionsBitField,
   GuildMember
@@ -15,7 +15,7 @@ import { emojiInline } from "../../utils/emojiRegistry";
 
 export async function handleHelp(message: Message) {
   const config = await getGuildConfig(message.guildId!);
-  const prefix = config.prefix;
+  const prefix = config.prefix || "!";
 
   // --- EMOJI CONFIGURATION ---
   // 1. Economy (Animated Money)
@@ -23,7 +23,7 @@ export async function handleHelp(message: Message) {
   const strEconomy = `<a:money:${idEconomy}>`;
 
   // 2. Income (Server Currency)
-  const incomeRaw = config.currencyEmoji;
+  const incomeRaw = config.currencyEmoji || "💰";
   const idIncome = incomeRaw.match(/:(\d+)>/)?.[1] ?? (incomeRaw.match(/^\d+$/) ? incomeRaw : undefined);
 
   // 3. Games (Casino)
@@ -31,7 +31,7 @@ export async function handleHelp(message: Message) {
   const strGames = `<a:casino:${idGames}>`;
 
   // 4. Admin (Settings)
-  const eAdminRaw = emojiInline("settings", message.guild) || "⚙️";
+  const eAdminRaw = emojiInline("settings", message.guild!) || "⚙️";
   const idAdmin = eAdminRaw.match(/:(\d+)>/)?.[1];
 
   // --- HELPER: Resolve Emoji for Dropdown ---
@@ -113,7 +113,8 @@ export async function handleHelp(message: Message) {
           { name: `\`${prefix}work\``, value: "Earn standard income." },
           { name: `\`${prefix}beg\``, value: "Small earnings with low cooldown." },
           { name: `\`${prefix}crime\``, value: "High risk, high reward." },
-          { name: `\`${prefix}slut\``, value: "Risky income command." }
+          { name: `\`${prefix}slut\``, value: "Risky income command." },
+          { name: `\`${prefix}collect\``, value: "Claim role income." }
         );
     }
     else if (val === "games") {
@@ -132,7 +133,7 @@ export async function handleHelp(message: Message) {
         return;
       }
 
-      const eSettings = emojiInline("settings", message.guild) || "⚙️";
+      const eSettings = emojiInline("settings", message.guild!) || "⚙️";
       embed.setTitle(`${eSettings} Admin Configuration`)
         .addFields(
           {
@@ -143,9 +144,7 @@ export async function handleHelp(message: Message) {
           },
           {
             name: "📈 **Modern Economy Config**", value:
-              `\`${prefix}setloan <0-100>\` (Loan Interest %)\n` +
-              `\`${prefix}setfd <0-100>\` (FD Interest %)\n` +
-              `\`${prefix}setrd <0-100>\` (RD Interest %)\n` +
+              `\`${prefix}setloan / setfd / setrd <0-100>\` (Interest Rates)\n` +
               `\`${prefix}settax <0-100>\` (Black Market Tax %)`
           },
           {
@@ -171,19 +170,23 @@ export async function handleHelp(message: Message) {
           },
           {
             name: "👮 **Robbery Settings**", value:
-              `\`${prefix}setrob success <0-100>\`\n` +
-              `\`${prefix}setrob fine <0-100>\`\n` +
+              `\`${prefix}setrob success/fine <0-100>\`\n` +
               `\`${prefix}setrob cooldown <seconds>\`\n` +
               `\`${prefix}setrob immunity <add/remove> <role>\``
           },
           {
             name: "💰 **Income Settings**", value:
               `\`${prefix}setincome <cmd> <min|max> <amount>\`\n` +
-              `\`${prefix}setincomecooldown <cmd> <seconds>\``
+              `\`${prefix}setincomecooldown <cmd> <seconds>\`\n` +
+              `\`${prefix}set-role-income @Role <amt> <time>\``
           }
         );
     }
 
     await i.reply({ embeds: [embed], ephemeral: true });
+  });
+
+  collector.on("end", () => {
+    // Clean up logic if needed
   });
 }

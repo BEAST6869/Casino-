@@ -81,9 +81,23 @@ model RoleIncome {
   guildId   String
   roleId    String
   amount    Int 
-  interval  Int 
-  lastClaim DateTime?
+  cooldown  Int       @default(86400) // Default 24 hours
   createdAt DateTime  @default(now())
+
+  claims    RoleIncomeClaim[]
+  
+  @@unique([guildId, roleId])
+}
+
+model RoleIncomeClaim {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId
+  roleIncomeId String   @db.ObjectId
+  claimedAt    DateTime @default(now())
+  
+  roleIncome   RoleIncome @relation(fields: [roleIncomeId], references: [id])
+
+  @@unique([userId, roleIncomeId]) // One claim record per user/role pair (we update claimedAt)
 }
 
 model Job {
@@ -226,6 +240,10 @@ model GuildConfig {
   loanMaxAmount    Int?     // If null, dynamic based on credit score
 
   marketTax        Int      @default(5) // % tax on black market sales
+
+  gameCooldowns    Json?    @default("{}") // e.g. {"slots": 30, "bj": 10}
+
+  logChannelId     String?  // Channel ID for audit logs
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

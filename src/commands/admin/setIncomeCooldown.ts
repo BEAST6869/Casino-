@@ -2,6 +2,7 @@
 import { Message } from "discord.js";
 import prisma from "../../utils/prisma";
 import { successEmbed, errorEmbed } from "../../utils/embed";
+import { parseDuration, formatDuration } from "../../utils/format";
 
 const SUPPORTED = ["work", "beg", "crime", "slut"];
 
@@ -12,11 +13,12 @@ export async function handleSetIncomeCooldown(message: Message, args: string[]) 
     }
 
     const cmd = (args[0] ?? "").toLowerCase();
-    const seconds = Math.floor(Number(args[1] ?? NaN));
+    const timeStr = args.slice(1).join(" "); // "work 1h 30m"
+    const seconds = parseDuration(timeStr);
 
-    if (!SUPPORTED.includes(cmd) || !Number.isFinite(seconds) || seconds < 0) {
+    if (!SUPPORTED.includes(cmd) || seconds === null || seconds < 0) {
       return message.reply({
-        embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!setincomecooldown <work|beg|crime|slut> <seconds>`")]
+        embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!setincomecooldown <work|beg|crime|slut> <duration>`\nExample: `!setincomecooldown work 1h 30m`")]
       });
     }
 
@@ -27,7 +29,7 @@ export async function handleSetIncomeCooldown(message: Message, args: string[]) 
     });
 
     return message.reply({
-      embeds: [successEmbed(message.author, "Cooldown Updated", `Set **${cmd}** cooldown to **${seconds}s**`)]
+      embeds: [successEmbed(message.author, "Cooldown Updated", `Set **${cmd}** cooldown to **${formatDuration(seconds * 1000)}**`)]
     });
   } catch (err) {
     console.error("handleSetIncomeCooldown error:", err);

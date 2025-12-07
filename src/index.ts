@@ -19,6 +19,7 @@ import { initEmojiRegistry, listEmojiKeys } from "./utils/emojiRegistry";
 import { setupXpListener } from "./listeners/xpListener";
 import { handleBankInteraction } from "./handlers/bankInteractionHandler";
 import { handleMarketInteraction } from "./handlers/marketInteractionHandler";
+import { handleInventoryInteraction } from "./handlers/inventoryInteractionHandler";
 import { initScheduler } from "./scheduler";
 
 // --- load slash commands automatically from src/commands/slash ---
@@ -121,6 +122,11 @@ client.on("interactionCreate", async (interaction: Interaction) => {
     // 3. Market Interactions
     if (id.startsWith("market_") || id.startsWith("sell_")) {
       return await handleMarketInteraction(interaction);
+    }
+
+    // 4. Inventory Interactions
+    if (id.startsWith("inv_")) {
+      return await handleInventoryInteraction(interaction as any);
     }
 
   } catch (err) {

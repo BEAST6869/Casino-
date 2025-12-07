@@ -4,6 +4,8 @@ import { placeBetWithTransaction, placeBetFallback } from "../../services/gameSe
 import { getGuildConfig } from "../../services/guildConfigService";
 import { fmtCurrency } from "../../utils/format";
 import { successEmbed, errorEmbed } from "../../utils/embed";
+import { checkCooldown } from "../../utils/cooldown";
+import { formatDuration } from "../../utils/format";
 
 // Custom Emojis for Slots
 const CHERRY = "<:cherri:1446428169786622053>";
@@ -44,9 +46,28 @@ export async function handleSlots(message: Message, args: string[]) {
 
   // Check Minimum Bet
   if (amount < minBet) {
-    return message.reply({ 
-      embeds: [errorEmbed(message.author, "Bet Too Low", `The minimum bet is **${fmtCurrency(minBet, emoji)}**.`)] 
+    return message.reply({
+      embeds: [errorEmbed(message.author, "Bet Too Low", `The minimum bet is **${fmtCurrency(minBet, emoji)}**.`)]
     });
+  }
+
+  // Check Cooldown
+  const cooldowns = (config.gameCooldowns as Record<string, number>) || {};
+  const cdSeconds = cooldowns["slots"] || 0;
+
+  if (cdSeconds > 0) {
+    const { checkCooldown } = require("../../utils/cooldown"); // Inline import to avoid circular dependency if any, or just import at top.
+    // Actually, importing at top is better. I will add import in separate block if needed, but here simple usage.
+    // Using global/user specific key
+    const now = Date.now();
+    const key = `game:slots:${message.guildId}:${message.author.id}`;
+
+    const remaining = checkCooldown(key, cdSeconds);
+    if (remaining > 0) {
+      return message.reply({
+        embeds: [errorEmbed(message.author, "Cooldown Active", `⏳ Please wait **${formatDuration(remaining * 1000)}** before playing Slots again.`)]
+      });
+    }
   }
 
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
@@ -80,15 +101,15 @@ export async function handleSlots(message: Message, args: string[]) {
 
   // Result Embed
   // Using the animated casino cash emoji for the title as requested
-  const eTitle = "<a:casino:1445732641545654383>"; 
+  const eTitle = "<a:casino:1445732641545654383>";
 
   const embed = new EmbedBuilder()
     .setTitle(`${eTitle} Slots`)
     .setColor(win ? Colors.Green : Colors.Red)
     .setDescription(
       `**[ ${reel1} | ${reel2} | ${reel3} ]**\n\n` +
-      (win 
-        ? `**JACKPOT!** You won **${fmtCurrency(payout, emoji)}**! (x${multiplier})` 
+      (win
+        ? `**JACKPOT!** You won **${fmtCurrency(payout, emoji)}**! (x${multiplier})`
         : `Better luck next time... You lost **${fmtCurrency(amount, emoji)}**.`)
     )
     // Footer shows only the numeric balance (clean look)

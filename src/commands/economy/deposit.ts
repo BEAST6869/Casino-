@@ -4,10 +4,11 @@ import { depositToBank, getBankByUserId } from "../../services/bankService";
 import { getGuildConfig } from "../../services/guildConfigService"; // Cached Config
 import { successEmbed, errorEmbed } from "../../utils/embed";
 import { fmtCurrency } from "../../utils/format";
+import { logToChannel } from "../../utils/discordLogger";
 
 export async function handleDeposit(message: Message, args: string[]) {
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
-  
+
   // 1. Fetch Config (Instant Cache)
   const config = await getGuildConfig(message.guildId!);
   const emoji = config.currencyEmoji;
@@ -26,6 +27,15 @@ export async function handleDeposit(message: Message, args: string[]) {
   try {
     await depositToBank(wallet.id, user.id, amount);
     const bank = await getBankByUserId(user.id);
+
+    // Log Deposit
+    await logToChannel(message.client, {
+      guild: message.guild!,
+      type: "ECONOMY",
+      title: "Bank Deposit",
+      description: `**User:** ${message.author.tag}\n**Amount:** ${fmtCurrency(amount, emoji)}\n**New Balance:** ${fmtCurrency(bank?.balance ?? 0, emoji)}`,
+      color: 0x00AAFF
+    });
 
     return message.reply({
       embeds: [

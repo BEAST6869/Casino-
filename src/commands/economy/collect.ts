@@ -1,0 +1,45 @@
+
+import { Message, EmbedBuilder } from "discord.js";
+import { claimRoleIncome } from "../../services/roleIncomeService";
+import { ensureBankForUser } from "../../services/bankService";
+import { getGuildConfig } from "../../services/guildConfigService";
+import { successEmbed } from "../../utils/embed";
+import { logToChannel } from "../../utils/discordLogger";
+
+export async function handleCollectRoleIncome(message: Message, args: string[]) {
+    if (!message.guild || !message.member) return;
+
+    // Ensure user has a bank account to receive funds
+    await ensureBankForUser(message.author.id);
+    const config = await getGuildConfig(message.guild.id);
+
+    const roleIds = message.member.roles.cache.map(r => r.id);
+
+    try {
+        const result = await claimRoleIncome(message.author.id, message.guild.id, roleIds);
+
+        if (result.totalClaimed === 0) {
+            return message.reply("You have no income to collect right now. (Check your roles or cooldowns).");
+        }
+
+        const details = result.details.map(d => {
+            const role = message.guild?.roles.cache.get(d.roleId);
+            return `• **${role?.name || "Unknown Role"}**: ${config.currencyEmoji} ${d.amount}`;
+        }).join("\n");
+
+        // Log Collection
+        await logToChannel(message.client, {
+            guild: message.guild!,
+            type: "ECONOMY",
+            title: "Income Collected",
+            description: `**User:** ${message.author.tag}\n**Total:** ${config.currencyEmoji} ${result.totalClaimed}`,
+            color: 0x00FF00
+        });
+
+        const embed = successEmbed(message.author, "Income Collected!", `You collected a total of **${config.currencyEmoji} ${result.totalClaimed}**!\n\n${details}`);
+        return message.reply({ embeds: [embed] });
+
+    } catch (err) {
+        return message.reply(`Error collecting income: ${(err as Error).message}`);
+    }
+}

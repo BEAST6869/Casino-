@@ -2,6 +2,7 @@
 import { Message } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../../services/guildConfigService";
 import { successEmbed, errorEmbed, infoEmbed } from "../../utils/embed";
+import { parseDuration, formatDuration } from "../../utils/format";
 
 export async function handleSetRob(message: Message, args: string[]) {
   if (!message.member?.permissions.has("Administrator")) {
@@ -15,8 +16,8 @@ export async function handleSetRob(message: Message, args: string[]) {
 
   // Display current settings if no args
   if (!sub) {
-    const immuneRoles = config.robImmuneRoles.length 
-      ? config.robImmuneRoles.map(r => `<@&${r}>`).join(", ") 
+    const immuneRoles = config.robImmuneRoles.length
+      ? config.robImmuneRoles.map(r => `<@&${r}>`).join(", ")
       : "None";
 
     const desc = `
@@ -44,12 +45,15 @@ export async function handleSetRob(message: Message, args: string[]) {
     return message.reply({ embeds: [successEmbed(message.author, "Updated", `Rob failure fine set to **${pct}%**`)] });
   }
 
-  // !setrob cooldown 300
+  // !setrob cooldown 300 (or 2h 30m)
   if (sub === "cooldown" || sub === "cd") {
-    const sec = parseInt(val);
-    if (isNaN(sec) || sec < 0) return message.reply("Invalid seconds.");
+    const timeStr = args.slice(1).join(" ");
+    const sec = parseDuration(timeStr || val);
+
+    if (sec === null || sec < 0) return message.reply("Invalid duration (e.g. `1h 30m`, `300`).");
+
     await updateGuildConfig(message.guildId!, { robCooldown: sec });
-    return message.reply({ embeds: [successEmbed(message.author, "Updated", `Rob cooldown set to **${sec}s**`)] });
+    return message.reply({ embeds: [successEmbed(message.author, "Updated", `Rob cooldown set to **${formatDuration(sec * 1000)}**`)] });
   }
 
   // !setrob immunity add @Role
@@ -66,7 +70,7 @@ export async function handleSetRob(message: Message, args: string[]) {
       currentRoles.push(roleId);
       await updateGuildConfig(message.guildId!, { robImmuneRoles: currentRoles });
       return message.reply({ embeds: [successEmbed(message.author, "Immunity Added", `Role <@&${roleId}> is now immune to robbing.`)] });
-    } 
+    }
     else if (action === "remove" || action === "rem") {
       if (!currentRoles.includes(roleId)) return message.reply("Role is not in the immunity list.");
       currentRoles = currentRoles.filter(id => id !== roleId);

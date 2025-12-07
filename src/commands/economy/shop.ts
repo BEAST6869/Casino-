@@ -6,15 +6,14 @@ import {
   ButtonStyle,
   Colors,
   ComponentType,
-  ButtonInteraction,
-  GuildMember,
-  APIButtonComponent
+  GuildMember
 } from "discord.js";
 import { getShopItems, buyItem, getUserInventory } from "../../services/shopService";
 import { getGuildConfig } from "../../services/guildConfigService";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { fmtCurrency } from "../../utils/format";
 import { successEmbed, errorEmbed } from "../../utils/embed";
+import { logToChannel } from "../../utils/discordLogger";
 
 // Layout: Items listed in Embed Text.
 // Interaction: Numbered buttons (1-5) below to buy.
@@ -76,15 +75,24 @@ export async function handleShop(message: Message, args: string[]) {
     if (sub === "buy") {
       const itemName = args.slice(1).join(" ");
       if (!itemName) return message.reply("Usage: `!shop buy <item name>`");
-      
+
       try {
         await ensureUserAndWallet(message.author.id, message.author.tag);
         const item = await buyItem(message.guildId!, message.author.id, itemName);
-        
+
         if (item.roleId && message.guild) {
-            const role = message.guild.roles.cache.get(item.roleId);
-            if (role) try { await message.member?.roles.add(role); } catch {}
+          const role = message.guild.roles.cache.get(item.roleId);
+          if (role) try { await message.member?.roles.add(role); } catch { }
         }
+
+        // Log Purchase
+        await logToChannel(message.client, {
+          guild: message.guild!,
+          type: "MARKET",
+          title: "Shop Purchase",
+          description: `**User:** ${message.author.tag}\n**Item:** ${item.name}\n**Price:** ${fmtCurrency(item.price, emoji)}`,
+          color: 0x00FF00
+        });
 
         return message.reply({ embeds: [successEmbed(message.author, "Purchase Successful", `You bought **${item.name}**!`)] });
       } catch (err) {
@@ -147,18 +155,27 @@ export async function handleShop(message: Message, args: string[]) {
         try {
           await ensureUserAndWallet(interaction.user.id, interaction.user.tag);
           const bought = await buyItem(interaction.guildId!, interaction.user.id, item.name);
-          
+
           if (bought.roleId && interaction.guild) {
             const role = interaction.guild.roles.cache.get(bought.roleId);
             if (role) {
-                const member = interaction.member as GuildMember;
-                try { await member.roles.add(role); } catch(e) {}
+              const member = interaction.member as GuildMember;
+              try { await member.roles.add(role); } catch (e) { }
             }
           }
 
-          await interaction.reply({ 
-            content: `✅ Purchased **${bought.name}** for **${fmtCurrency(bought.price, emoji)}**!`, 
-            ephemeral: true 
+          // Log Interactive Purchase
+          await logToChannel(interaction.client, {
+            guild: interaction.guild!,
+            type: "MARKET",
+            title: "Shop Purchase",
+            description: `**User:** ${interaction.user.tag}\n**Item:** ${bought.name}\n**Price:** ${fmtCurrency(bought.price, emoji)}`,
+            color: 0x00FF00
+          });
+
+          await interaction.reply({
+            content: `✅ Purchased **${bought.name}** for **${fmtCurrency(bought.price, emoji)}**!`,
+            ephemeral: true
           });
         } catch (err) {
           await interaction.reply({ content: `❌ Error: ${(err as Error).message}`, ephemeral: true });
@@ -170,17 +187,17 @@ export async function handleShop(message: Message, args: string[]) {
       try {
         // Safe reconstruction to disable buttons
         const finalUI = renderShopPage(allItems, currentPage, totalPages, emoji);
-        
+
         finalUI.components.forEach(row => {
-            row.components.forEach(btn => btn.setDisabled(true));
+          row.components.forEach(btn => btn.setDisabled(true));
         });
 
-        sentMessage.edit({ components: finalUI.components }).catch(() => {});
-      } catch {}
+        sentMessage.edit({ components: finalUI.components }).catch(() => { });
+      } catch { }
     });
 
   } catch (err) {
     console.error("handleShop error:", err);
-    try { await message.reply("Failed to load shop."); } catch {}
+    try { await message.reply("Failed to load shop."); } catch { }
   }
 }

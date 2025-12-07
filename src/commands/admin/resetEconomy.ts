@@ -1,11 +1,12 @@
-// src/commands/admin/resetEconomy.ts
-import { Message } from "discord.js";
+
+import { Message, PermissionsBitField } from "discord.js";
 import prisma from "../../utils/prisma";
 import { errorEmbed, successEmbed } from "../../utils/embed";
+import { logToChannel } from "../../utils/discordLogger";
 
 export async function handleResetEconomy(message: Message, args: string[]) {
   try {
-    if (!message.member?.permissions.has("Administrator")) {
+    if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
       return message.reply({ embeds: [errorEmbed(message.author, "No Permission", "Admins only.")] });
     }
 
@@ -18,18 +19,27 @@ export async function handleResetEconomy(message: Message, args: string[]) {
     }
 
     // perform destructive reset: set wallet/bank balances to 0, delete transactions and audits
-    // Wrapping in a try/catch
     try {
-      // Note: large collections may require batching; this does a deleteMany which works for reasonable datasets.
       await prisma.$transaction([
         prisma.transaction.deleteMany({}),
         prisma.audit.deleteMany({}),
         prisma.wallet.updateMany({ data: { balance: 0 } }),
-        prisma.bank.updateMany({ data: { balance: 0 } })
+        prisma.bank.updateMany({ data: { balance: 0 } }),
+        prisma.inventory.deleteMany({}),
+        prisma.marketListing.deleteMany({})
       ]);
 
+      // Log It
+      await logToChannel(message.client, {
+        guild: message.guild!,
+        type: "ADMIN",
+        title: "🔥 ECONOMY RESET 🔥",
+        description: `**Admin:** ${message.author.tag} (${message.author.id})\n\nALL user data, wallets, banks, investments, and items were wiped.`,
+        color: 0x000000
+      });
+
       return message.reply({
-        embeds: [successEmbed(message.author, "Economy Reset", "All wallets & banks zeroed; transactions & audits deleted.")]
+        embeds: [successEmbed(message.author, "Economy Reset", "All wallets, banks, inventories & items zeroed; transactions & audits deleted.")]
       });
     } catch (innerErr) {
       console.error("Reset transaction failed:", innerErr);

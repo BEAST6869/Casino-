@@ -4,6 +4,8 @@ import { placeBetWithTransaction, placeBetFallback } from "../../services/gameSe
 import { getGuildConfig } from "../../services/guildConfigService";
 import { fmtCurrency } from "../../utils/format";
 import { successEmbed, errorEmbed } from "../../utils/embed";
+import { checkCooldown } from "../../utils/cooldown";
+import { formatDuration } from "../../utils/format";
 
 export async function handleCoinflip(message: Message, args: string[]) {
   // 1. Parse Arguments
@@ -36,6 +38,9 @@ export async function handleCoinflip(message: Message, args: string[]) {
     });
   }
 
+  const config = await getGuildConfig(message.guildId!);
+  const emoji = config.currencyEmoji;
+
   // 3. Validate Choice
   let choice: "heads" | "tails";
   if (["heads", "head", "h"].includes(choiceRaw)) choice = "heads";
@@ -53,6 +58,20 @@ export async function handleCoinflip(message: Message, args: string[]) {
   }
 
   // 4. Check Funds
+  // Check Cooldown
+  const cooldowns = (config.gameCooldowns as Record<string, number>) || {};
+  const cdSeconds = cooldowns["cf"] || 0;
+
+  if (cdSeconds > 0) {
+    const key = `game:cf:${message.guildId}:${message.author.id}`;
+    const remaining = checkCooldown(key, cdSeconds);
+    if (remaining > 0) {
+      return message.reply({
+        embeds: [errorEmbed(message.author, "Cooldown Active", `⏳ Please wait **${formatDuration(remaining * 1000)}** before flipping again.`)]
+      });
+    }
+  }
+
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
   if (!user.wallet || user.wallet.balance < amount) {
     return message.reply({
@@ -65,9 +84,6 @@ export async function handleCoinflip(message: Message, args: string[]) {
       ],
     });
   }
-
-  const config = await getGuildConfig(message.guildId!);
-  const emoji = config.currencyEmoji; // e.g. "<a:casino_cash:1444352930080882809>"
 
   // 5. The Flip
   const isHeads = Math.random() < 0.5;
@@ -122,10 +138,10 @@ export async function handleCoinflip(message: Message, args: string[]) {
     )
     .setDescription(
       `**You Bet:** ${fmtCurrency(amount, emoji)} on \`${choice.toUpperCase()}\`\n` +
-        `**The Coin Flipped:** 🪙 \`${result.toUpperCase()}\`\n\n` +
-        (didWin
-          ? `**Payout:** ${fmtCurrency(payout, emoji)}`
-          : `**Lost:** ${fmtCurrency(amount, emoji)}`)
+      `**The Coin Flipped:** 🪙 \`${result.toUpperCase()}\`\n\n` +
+      (didWin
+        ? `**Payout:** ${fmtCurrency(payout, emoji)}`
+        : `**Lost:** ${fmtCurrency(amount, emoji)}`)
     )
     .setFooter({
       // no custom emoji text here; just number in international format

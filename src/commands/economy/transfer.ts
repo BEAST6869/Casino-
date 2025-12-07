@@ -3,7 +3,9 @@ import { Message } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { transferAnyFunds } from "../../services/transferService";
 import { successEmbed, errorEmbed } from "../../utils/embed";
-import { fmtAmount } from "../../utils/format"; // Import
+import { fmtAmount, fmtCurrency } from "../../utils/format";
+import { logToChannel } from "../../utils/discordLogger";
+import { getGuildConfig } from "../../services/guildConfigService";
 
 export async function handleTransfer(message: Message, args: string[]) {
   try {
@@ -20,6 +22,17 @@ export async function handleTransfer(message: Message, args: string[]) {
     try {
       await transferAnyFunds(sender.wallet!.id, toId, amount, message.author.id, message.guildId ?? undefined);
       // Updated response with fmtAmount
+      const config = await getGuildConfig(message.guildId!);
+
+      // Log Transfer
+      await logToChannel(message.client, {
+        guild: message.guild!,
+        type: "ECONOMY",
+        title: "Transfer",
+        description: `**From:** <@${sender.discordId}>\n**To:** <@${toId}>\n**Amount:** ${fmtCurrency(amount, config.currencyEmoji)}`,
+        color: 0x00FFFF
+      });
+
       return message.reply({ embeds: [successEmbed(message.author, "Transfer Successful", `Transferred **${fmtAmount(amount)}** to <@${toId}>.`)] });
     } catch (err) {
       return message.reply({ embeds: [errorEmbed(message.author, "Transfer Failed", (err as Error).message)] });

@@ -1,0 +1,5 @@
+src/handlers/inventoryInteractionHandler.ts(210,39): error TS2339: Property 'send' does not exist on type 'TextBasedChannel'.
+  Property 'send' does not exist on type 'PartialGroupDMChannel'.
+src/index.ts(129,47): error TS2345: Argument of type 'MessageContextMenuCommandInteraction<CacheType> | UserContextMenuCommandInteraction<CacheType> | ... 4 more ... | ModalSubmitInteraction<...>' is not assignable to parameter of type 'StringSelectMenuInteraction<CacheType> | ButtonInteraction<CacheType> | ModalSubmitInteraction<CacheType>'.
+  Type 'MessageContextMenuCommandInteraction<CacheType>' is not assignable to type 'StringSelectMenuInteraction<CacheType> | ButtonInteraction<CacheType> | ModalSubmitInteraction<CacheType>'.
+    Type 'MessageContextMenuCommandInteraction<CacheType>' is missing the following properties from type 'ButtonInteraction<CacheType>': componentType, component, customId, message, and 2 more.

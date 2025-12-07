@@ -17,6 +17,8 @@ import { applyForLoan, repayLoan, createInvestment, getFinancialSummary, checkMa
 import { getGuildConfig } from "../services/guildConfigService";
 import { safeInteractionReply } from "../utils/interactionHelpers";
 import { ensureBankForUser } from "../services/bankService";
+import { logToChannel } from "../utils/discordLogger";
+import { fmtCurrency } from "../utils/format";
 
 export async function handleBankInteraction(interaction: Interaction) {
     if (interaction.isButton()) {
@@ -233,6 +235,17 @@ async function handleButton(interaction: ButtonInteraction) {
                 await interaction.reply({ content: "No matured investments to collect yet.", ephemeral: true });
             } else {
                 const total = results.reduce((a, b) => a + b.payout, 0);
+
+                // Log Collection
+                const config = await getGuildConfig(guildId);
+                await logToChannel(interaction.client, {
+                    guild: interaction.guild!,
+                    type: "ECONOMY",
+                    title: "Investment Collected",
+                    description: `**User:** ${user.tag}\n**Investments:** ${results.length}\n**Total Payout:** ${fmtCurrency(total, config.currencyEmoji)}`,
+                    color: 0x00FF00
+                });
+
                 await interaction.reply({ content: `Collected **${results.length}** investments for a total of **${total}**!`, ephemeral: true });
             }
             break;
@@ -244,6 +257,9 @@ async function handleModal(interaction: ModalSubmitInteraction) {
     const { customId, fields, user, guildId } = interaction;
     if (!guildId) return;
 
+    // Defer immediately to prevent timeout
+    await interaction.deferReply({ ephemeral: true });
+
     try {
         if (customId === "loan_apply_modal") {
             const amountStr = fields.getTextInputValue("loan_amount");
@@ -252,7 +268,18 @@ async function handleModal(interaction: ModalSubmitInteraction) {
             if (isNaN(amount)) throw new Error("Invalid amount.");
 
             const result = await applyForLoan(user.id, guildId, amount);
-            await interaction.reply({ content: `✅ Loan approved! Received **${amount}**. You must repay **${result.totalRepayment}** by ${result.dueDate.toLocaleDateString()}.`, ephemeral: true });
+
+            // Log Loan
+            const config = await getGuildConfig(guildId);
+            await logToChannel(interaction.client, {
+                guild: interaction.guild!,
+                type: "ECONOMY",
+                title: "Loan Approved",
+                description: `**User:** ${user.tag}\n**Amount:** ${fmtCurrency(amount, config.currencyEmoji)}\n**Repayment:** ${fmtCurrency(result.totalRepayment, config.currencyEmoji)}\n**Due:** ${result.dueDate.toLocaleDateString()}`,
+                color: 0x00FF00
+            });
+
+            await interaction.editReply({ content: `✅ Loan approved! Received **${amount}**. You must repay **${result.totalRepayment}** by ${result.dueDate.toLocaleDateString()}.` });
 
         } else if (customId === "loan_repay_modal") {
             const amountStr = fields.getTextInputValue("repay_amount");
@@ -271,7 +298,18 @@ async function handleModal(interaction: ModalSubmitInteraction) {
             }
 
             const result = await repayLoan(user.id, amount);
-            await interaction.reply({ content: `💸 Repaid **${result.paid}**. Status: **${result.status}**. Remaining: **${result.remaining}**.`, ephemeral: true });
+
+            // Log Repayment
+            const config = await getGuildConfig(guildId);
+            await logToChannel(interaction.client, {
+                guild: interaction.guild!,
+                type: "ECONOMY",
+                title: "Loan Repayment",
+                description: `**User:** ${user.tag}\n**Paid:** ${fmtCurrency(result.paid, config.currencyEmoji)}\n**Status:** ${result.status}\n**Remaining:** ${fmtCurrency(result.remaining, config.currencyEmoji)}`,
+                color: 0x00AAFF
+            });
+
+            await interaction.editReply({ content: `💸 Repaid **${result.paid}**. Status: **${result.status}**. Remaining: **${result.remaining}**.` });
 
         } else if (customId.startsWith("invest_create_modal")) {
             const amount = parseInt(fields.getTextInputValue("invest_amount"));
@@ -279,16 +317,36 @@ async function handleModal(interaction: ModalSubmitInteraction) {
 
             if (isNaN(amount) || isNaN(days)) throw new Error("Invalid numbers provided.");
 
+            const config = await getGuildConfig(guildId);
+
             if (customId.endsWith("_FD")) {
                 await createInvestment(user.id, guildId, "FD", amount, days);
-                await interaction.reply({ content: `✅ Created Fixed Deposit of **${amount}** for **${days} days**.`, ephemeral: true });
+
+                await logToChannel(interaction.client, {
+                    guild: interaction.guild!,
+                    type: "ECONOMY",
+                    title: "Fixed Deposit Created",
+                    description: `**User:** ${user.tag}\n**Amount:** ${fmtCurrency(amount, config.currencyEmoji)}\n**Duration:** ${days} days`,
+                    color: 0xFFA500
+                });
+
+                await interaction.editReply({ content: `✅ Created Fixed Deposit of **${amount}** for **${days} days**.` });
             } else {
                 await createInvestment(user.id, guildId, "RD", amount, days);
-                await interaction.reply({ content: `✅ Created Recurring Deposit of **${amount}** for **${days} days**.`, ephemeral: true });
+
+                await logToChannel(interaction.client, {
+                    guild: interaction.guild!,
+                    type: "ECONOMY",
+                    title: "Recurring Deposit Created",
+                    description: `**User:** ${user.tag}\n**Amount:** ${fmtCurrency(amount, config.currencyEmoji)}\n**Duration:** ${days} days`,
+                    color: 0xFFA500
+                });
+
+                await interaction.editReply({ content: `✅ Created Recurring Deposit of **${amount}** for **${days} days**.` });
             }
         }
     } catch (err: any) {
-        await interaction.reply({ content: `❌ Error: ${err.message}`, ephemeral: true });
+        await interaction.editReply({ content: `❌ Error: ${err.message}` });
     }
 }
 

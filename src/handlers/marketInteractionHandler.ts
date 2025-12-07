@@ -17,6 +17,8 @@ import {
 import { listItemOnMarket, buyItemFromMarket, getMarketListings, getUserListings, cancelListing } from "../services/marketService";
 import { getGuildConfig } from "../services/guildConfigService";
 import prisma from "../utils/prisma";
+import { logToChannel } from "../utils/discordLogger";
+import { fmtCurrency } from "../utils/format";
 
 export async function handleMarketInteraction(interaction: Interaction) {
     if (interaction.isButton()) {
@@ -233,6 +235,17 @@ async function handleModal(interaction: ModalSubmitInteraction) {
             if (isNaN(amount) || isNaN(price)) throw new Error("Invalid numbers.");
 
             await listItemOnMarket(user.id, guildId, shopItemId, amount, price);
+
+            // Log Listing
+            const config = await getGuildConfig(guildId);
+            await logToChannel(interaction.client, {
+                guild: interaction.guild!,
+                type: "MARKET",
+                title: "Item Listed",
+                description: `**Seller:** ${user.tag}\n**Item:** ${shopItemId} (x${amount})\n**Price:** ${fmtCurrency(price, config.currencyEmoji)}`,
+                color: 0xFFA500
+            });
+
             await interaction.reply({ content: `✅ Listed item for sale!`, ephemeral: true });
         }
 
@@ -240,12 +253,32 @@ async function handleModal(interaction: ModalSubmitInteraction) {
             const listingId = fields.getTextInputValue("market_listing_id").trim();
             const res = await buyItemFromMarket(user.id, listingId);
 
+            // Log Buy
+            const config = await getGuildConfig(guildId);
+            await logToChannel(interaction.client, {
+                guild: interaction.guild!,
+                type: "MARKET",
+                title: "Item Bought",
+                description: `**Buyer:** ${user.tag}\n**Listing ID:** \`${listingId}\`\n**Item:** ${res.item} (x${res.amount})\n**Price:** ${fmtCurrency(Math.abs(res.price), config.currencyEmoji)}`,
+                color: 0x00FF00
+            });
+
             await interaction.reply({ content: `✅ Successfully bought **${res.amount}x ${res.item}** for **${res.price}**! (Tax: ${res.tax})`, ephemeral: true });
         }
 
         else if (customId === "market_cancel_modal") {
             const listingId = fields.getTextInputValue("market_listing_id").trim();
             await cancelListing(user.id, listingId);
+
+            // Log Cancel
+            await logToChannel(interaction.client, {
+                guild: interaction.guild!,
+                type: "MARKET",
+                title: "Listing Cancelled",
+                description: `**Seller:** ${user.tag}\n**Listing ID:** \`${listingId}\``,
+                color: 0xFF0000
+            });
+
             await interaction.reply({ content: `✅ Listing cancelled and items returned.`, ephemeral: true });
         }
 

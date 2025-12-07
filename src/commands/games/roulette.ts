@@ -1,19 +1,21 @@
-import { 
-  Message, 
-  EmbedBuilder, 
-  Colors, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
-  ButtonStyle, 
-  ComponentType, 
-  ButtonInteraction 
+import {
+  Message,
+  EmbedBuilder,
+  Colors,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+  ButtonInteraction
 } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { placeBetWithTransaction, placeBetFallback } from "../../services/gameService";
 import { getGuildConfig } from "../../services/guildConfigService";
 import { fmtCurrency } from "../../utils/format";
 import { successEmbed, errorEmbed } from "../../utils/embed";
-import { emojiInline } from "../../utils/emojiRegistry"; 
+import { checkCooldown } from "../../utils/cooldown";
+import { formatDuration } from "../../utils/format";
+import { emojiInline } from "../../utils/emojiRegistry";
 
 // --- THE MENU (Guide & Play Info) ---
 export async function handleRouletteMenu(message: Message) {
@@ -21,7 +23,7 @@ export async function handleRouletteMenu(message: Message) {
   const eCasino = "<a:casino:1445732641545654383>";
   const eScroll = "<:scroll:1446218234171887760>";
   const eDicesBtn = "<:dices:1446220119733702767>";
-  
+
   const eBlackCoin = "<:BlackCoin:1446217613632999565>";
   const eRedCoin = "<:redcoin:1446217599439343772>";
   const eDiceSpecific = "<a:dice:1446217848551899300>";
@@ -30,10 +32,10 @@ export async function handleRouletteMenu(message: Message) {
   const parseEmojiId = (str: string) => str.match(/:(\d+)>/)?.[1] ?? (str.match(/^\d+$/) ? str : str);
 
   const embed = new EmbedBuilder()
-    .setTitle(`${eCasino} Roulette Table`) 
+    .setTitle(`${eCasino} Roulette Table`)
     .setDescription("Welcome to the Casino! Test your luck on the wheel.")
     .setColor(Colors.Red)
-    .setImage("https://media.tenor.com/7gKkK6W85GgAAAAC/roulette-casino.gif") 
+    .setImage("https://media.tenor.com/7gKkK6W85GgAAAAC/roulette-casino.gif")
     .setFooter({ text: "Click 'Guide' for rules or 'Play' to start." });
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -42,7 +44,7 @@ export async function handleRouletteMenu(message: Message) {
       .setLabel("Guide")
       .setStyle(ButtonStyle.Secondary)
       .setEmoji(parseEmojiId(eScroll)),
-    
+
     new ButtonBuilder()
       .setCustomId("roul_play")
       .setLabel("How to Play")
@@ -65,24 +67,24 @@ export async function handleRouletteMenu(message: Message) {
         .setColor(Colors.Blue)
         .setDescription(
           `**Multipliers:**\n\n` +
-          `${eRedCoin} **Red / ${eBlackCoin} Black:**\n` + 
+          `${eRedCoin} **Red / ${eBlackCoin} Black:**\n` +
           `2x Payout (Win chance ~48.6%)\n\n` +
-          
-          `${eDiceSpecific} **Specific Number (0-36):**\n` + 
+
+          `${eDiceSpecific} **Specific Number (0-36):**\n` +
           `35x Payout (Win chance ~2.7%)\n\n` +
-          
-          `🔵 **Odd / 🟡 Even:**\n` + 
+
+          `🔵 **Odd / 🟡 Even:**\n` +
           `2x Payout\n\n` +
-          
+
           `**House Edge:** The green **0** belongs to the house!`
         );
       await i.reply({ embeds: [guideEmbed], ephemeral: true });
     }
 
     if (i.customId === "roul_play") {
-      await i.reply({ 
-        content: "To place a bet, type:\n`!bet <amount> <choice>`\n\n**Examples:**\n`!bet 100 red`\n`!bet 500 17`\n`!bet 1000 odd`", 
-        ephemeral: true 
+      await i.reply({
+        content: "To place a bet, type:\n`!bet <amount> <choice>`\n\n**Examples:**\n`!bet 100 red`\n`!bet 500 17`\n`!bet 1000 odd`",
+        ephemeral: true
       });
     }
   });
@@ -108,9 +110,23 @@ export async function handleBet(message: Message, args: string[]) {
 
   // Check Minimum Bet
   if (amount < minBet) {
-    return message.reply({ 
-      embeds: [errorEmbed(message.author, "Bet Too Low", `The minimum bet is **${fmtCurrency(minBet, emoji)}**.`)] 
+    return message.reply({
+      embeds: [errorEmbed(message.author, "Bet Too Low", `The minimum bet is **${fmtCurrency(minBet, emoji)}**.`)]
     });
+  }
+
+  // Check Cooldown
+  const cooldowns = (config.gameCooldowns as Record<string, number>) || {};
+  const cdSeconds = cooldowns["roulette"] || 0;
+
+  if (cdSeconds > 0) {
+    const key = `game:roulette:${message.guildId}:${message.author.id}`;
+    const remaining = checkCooldown(key, cdSeconds);
+    if (remaining > 0) {
+      return message.reply({
+        embeds: [errorEmbed(message.author, "Cooldown Active", `⏳ Please wait **${formatDuration(remaining * 1000)}** before playing Roulette again.`)]
+      });
+    }
   }
 
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
@@ -120,9 +136,9 @@ export async function handleBet(message: Message, args: string[]) {
 
   // --- Roulette Logic ---
   const spin = Math.floor(Math.random() * 37); // 0-36
-  const redNumbers = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+  const redNumbers = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
   const isRed = redNumbers.has(spin);
-  const isBlack = !isRed && spin !== 0; 
+  const isBlack = !isRed && spin !== 0;
 
   let didWin = false;
   let multiplier = 0;

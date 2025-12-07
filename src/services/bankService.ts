@@ -74,15 +74,18 @@ export async function removeMoneyFromBank(userId: string, amount: number) {
   const wallet = await prisma.wallet.findUnique({ where: { userId } });
   if (!wallet) throw new Error("Wallet not found (DB Error).");
 
-  await prisma.$transaction([
+  const [updatedBank] = await prisma.$transaction([
     prisma.bank.update({ where: { userId }, data: { balance: { decrement: amount } } }),
     prisma.transaction.create({
       data: {
         walletId: wallet.id,
         amount: -amount,
         type: "admin_remove_bank",
-        meta: { by: "admin" }
+        meta: { by: "admin" },
+        isEarned: false
       }
     })
   ]);
+
+  return updatedBank.balance;
 }
