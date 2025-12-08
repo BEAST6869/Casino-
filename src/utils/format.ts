@@ -55,3 +55,13 @@ export const parseDuration = (input: string): number | null => {
 
   return found ? totalSeconds : null;
 };
+
+/**
+ * Parses duration string to Days (float).
+ * 1d 12h -> 1.5
+ */
+export const parseDurationToDays = (input: string): number | null => {
+  const seconds = parseDuration(input);
+  if (seconds === null) return null;
+  return seconds / 86400;
+};

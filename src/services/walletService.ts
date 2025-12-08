@@ -5,12 +5,12 @@ const userIdCache = new Map<string, string>();
 
 /** ensure user exists (by discordId) and wallet exists */
 export async function ensureUserAndWallet(discordId: string, username: string) {
-  
+
   // 1. FAST: Check cache. If known, fetch full data including profileTheme
   if (userIdCache.has(discordId)) {
     const user = await prisma.user.findUnique({
       where: { discordId },
-      include: { wallet: true } 
+      include: { wallet: true }
     });
     // Return immediately if found
     if (user && user.wallet) return user;
@@ -21,11 +21,11 @@ export async function ensureUserAndWallet(discordId: string, username: string) {
   const user = await prisma.user.upsert({
     where: { discordId },
     update: { username }, // Update username if changed
-    create: { 
-      discordId, 
-      username, 
+    create: {
+      discordId,
+      username,
       profileTheme: "cyberpunk", // Default theme
-      wallet: { create: { balance: 1000 } } 
+      wallet: { create: { balance: 1000 } }
     },
     include: { wallet: true }
   });
@@ -59,17 +59,19 @@ export async function removeMoneyFromWallet(walletId: string, amount: number) {
   if (!wallet || wallet.balance < amount) throw new Error("Insufficient wallet funds.");
 
   await prisma.$transaction([
-    prisma.transaction.create({ 
-      data: { 
-        walletId, 
-        amount: -amount, 
-        type: "admin_remove", 
-        meta: { by: "admin" } 
-      } 
+    prisma.transaction.create({
+      data: {
+        walletId,
+        amount: -amount,
+        type: "admin_remove",
+        meta: { by: "admin" }
+      }
     }),
-    prisma.wallet.update({ 
-      where: { id: walletId }, 
-      data: { balance: { decrement: amount } } 
+    prisma.wallet.update({
+      where: { id: walletId },
+      data: { balance: { decrement: amount } }
     })
   ]);
+
+  return wallet.balance - amount;
 }

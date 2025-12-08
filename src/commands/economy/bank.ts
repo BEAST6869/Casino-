@@ -29,8 +29,8 @@ export async function execute(message: Message | any, args: string[]) {
             { name: "<:MoneyBag:1446970451606896781> Net Worth", value: `${config.currencyEmoji} ${summary.netWorth.toLocaleString()}`, inline: true },
             { name: "<a:credits:1445689337172721716> Credit Score", value: `${summary.creditScore}`, inline: true },
             {
-                name: "<:OnLoan:1446971056865935381> Active Loan", value: summary.activeLoan
-                    ? `**${summary.activeLoan.amount.toLocaleString()}** (Due: ${summary.activeLoan.dueDate.toLocaleDateString()})`
+                name: "<:OnLoan:1446971056865935381> Active Loans", value: summary.activeLoans.length > 0
+                    ? `**${summary.activeLoans.length} Active**\n(Use \`!credit\` for details)`
                     : "None", inline: true
             },
             { name: "<:graph:1445689267861979197> Investments", value: `${summary.investments.length} Active`, inline: true }

@@ -279,6 +279,48 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     case "market-tax":
       return handleSetEconomyConfig(message, args, "tax");
 
+    case "set-credit-reward":
+    case "set-reward":
+      return handleSetEconomyConfig(message, args, "credit-reward");
+
+    case "set-credit-penalty":
+    case "set-penalty":
+      return handleSetEconomyConfig(message, args, "credit-penalty");
+
+    case "set-credit-cap":
+    case "credit-cap":
+      return handleSetEconomyConfig(message, args, "credit-cap");
+
+    case "set-max-loans":
+    case "max-loans":
+      return handleSetEconomyConfig(message, args, "max-loans");
+
+    case "view-credit-tiers":
+    case "view-credit-config":
+      const { handleViewCreditTiers } = require("./commands/admin/manageCreditConfig");
+      return handleViewCreditTiers(message);
+
+    case "delete-credit-tier":
+    case "del-credit-tier":
+      const { handleDeleteCreditTier } = require("./commands/admin/manageCreditConfig");
+      return handleDeleteCreditTier(message, args);
+
+    case "set-credit-score":
+    case "set-score":
+      const { handleSetCreditScore } = require("./commands/admin/manageCreditScore");
+      return handleSetCreditScore(message, args);
+
+    case "set-credit-config":
+    case "credit-config":
+      const { handleSetCreditConfig } = require("./commands/admin/setCreditConfig");
+      return handleSetCreditConfig(message, args);
+
+    case "credit":
+    case "score":
+    case "cscore":
+      const { handleCredit } = require("./commands/economy/credit");
+      return handleCredit(message, args);
+
     case "set-role-income":
       return handleSetRoleIncome(message, args);
 

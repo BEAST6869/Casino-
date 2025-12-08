@@ -1,5 +1,5 @@
 import prisma from "../utils/prisma";
-import { checkCooldown } from "../utils/cooldown";
+import { checkCooldown, getCooldownExpiry } from "../utils/cooldown";
 import { formatDuration } from "../utils/format";
 
 function rand(min: number, max: number) {
@@ -45,7 +45,11 @@ export async function runIncomeCommand({
 
   const cooldownKey = `income:${guildId}:${discordId}:${commandKey}`;
   const cd = checkCooldown(cooldownKey, cfg.cooldown);
-  if (cd > 0) throw new Error(`Cooldown active. Try again in **${formatDuration(cd * 1000)}**.`);
+  if (cd > 0) {
+    const expiresAt = getCooldownExpiry(cooldownKey);
+    const timestamp = expiresAt ? Math.floor(expiresAt / 1000) : Math.floor((Date.now() / 1000) + cd);
+    throw new Error(`Cooldown active. Try again <t:${timestamp}:R>.`);
+  }
 
   // pick amount
   const amount = rand(cfg.minPay, cfg.maxPay);

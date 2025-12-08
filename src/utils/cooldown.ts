@@ -30,3 +30,12 @@ export function setCooldown(key: string, secondsFromNow: number) {
 export function clearCooldown(key: string) {
   cooldowns.delete(key);
 }
+
+/**
+ * Get the absolute expiry timestamp (ms) for a key, or null if none/expired.
+ */
+export function getCooldownExpiry(key: string): number | null {
+  const expiresAt = cooldowns.get(key);
+  if (!expiresAt || expiresAt <= Date.now()) return null;
+  return expiresAt;
+}

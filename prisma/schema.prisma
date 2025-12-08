@@ -241,6 +241,12 @@ model GuildConfig {
 
   marketTax        Int      @default(5) // % tax on black market sales
 
+  creditConfig     Json?    @default("[]") // Array of { minScore: number, maxLoan: number, maxDays: number }
+  creditScoreReward Int     @default(10)   // Score gained on on-time repayment
+  creditScorePenalty Int    @default(20)   // Score lost on late repayment
+  maxCreditScore    Int      @default(2000)
+  maxActiveLoans    Int      @default(1)    // Max simultaneous active loans per user
+
   gameCooldowns    Json?    @default("{}") // e.g. {"slots": 30, "bj": 10}
 
   logChannelId     String?  // Channel ID for audit logs

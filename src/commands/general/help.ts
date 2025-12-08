@@ -92,6 +92,7 @@ export async function handleHelp(message: Message) {
       embed.setTitle(`${strEconomy} Economy & Shop`)
         .addFields(
           { name: `\`${prefix}profile\``, value: "View your stats, net worth & credit score." },
+          { name: `\`${prefix}credit\``, value: "💳 **Credit Profile** (Score, Loan Limits, Active Loan)." },
           { name: `\`${prefix}bank\``, value: "🏦 **Financial Dashboard** (Loans, Investments, Net Worth)." },
           { name: `\`${prefix}bm\``, value: "🏴‍☠️ **Black Market** (Buy/Sell/List Items Globaly)." },
           { name: `\`${prefix}bal [user]\``, value: "Check wallet and bank balance." },
@@ -146,6 +147,17 @@ export async function handleHelp(message: Message) {
             name: "📈 **Modern Economy Config**", value:
               `\`${prefix}setloan / setfd / setrd <0-100>\` (Interest Rates)\n` +
               `\`${prefix}settax <0-100>\` (Black Market Tax %)`
+          },
+          {
+            name: "💳 **Credit & Loans**", value:
+              `\`${prefix}score [user]\`: View credit profile\n` +
+              `\`${prefix}view-credit-tiers\`: List tiers\n` +
+              `\`${prefix}set-credit-config <score> <loan> <time>\`\n` +
+              `\`${prefix}delete-credit-tier <score>\`\n` +
+              `\`${prefix}set-credit-score @user <amount>\`\n` +
+              `\`${prefix}set-max-loans <amount>\`\n` +
+              `\`${prefix}set-credit-cap <score>\`\n` +
+              `\`${prefix}set-credit-reward/penalty <amount>\``
           },
           {
             name: "🛒 **Shop Management**", value:

@@ -13,12 +13,12 @@ import {
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder
 } from "discord.js";
-import { applyForLoan, repayLoan, createInvestment, getFinancialSummary, checkMaturedInvestments } from "../services/bankingService";
+import { applyForLoan, repayLoan, createInvestment, getFinancialSummary, checkMaturedInvestments, calculateCreditLimits } from "../services/bankingService";
 import { getGuildConfig } from "../services/guildConfigService";
 import { safeInteractionReply } from "../utils/interactionHelpers";
 import { ensureBankForUser } from "../services/bankService";
 import { logToChannel } from "../utils/discordLogger";
-import { fmtCurrency } from "../utils/format";
+import { fmtCurrency, formatDuration } from "../utils/format";
 
 export async function handleBankInteraction(interaction: Interaction) {
     if (interaction.isButton()) {
@@ -49,8 +49,8 @@ async function handleButton(interaction: ButtonInteraction) {
                     { name: "<:MoneyBag:1446970451606896781> Net Worth", value: `${config.currencyEmoji} ${summary.netWorth.toLocaleString()}`, inline: true },
                     { name: "<a:credits:1445689337172721716> Credit Score", value: `${summary.creditScore}`, inline: true },
                     {
-                        name: "<:OnLoan:1446971056865935381> Active Loan", value: summary.activeLoan
-                            ? `**${config.currencyEmoji} ${summary.activeLoan.totalRepayment.toLocaleString()}**\nDue: ${summary.activeLoan.dueDate.toLocaleDateString()}`
+                        name: "<:OnLoan:1446971056865935381> Active Loans", value: summary.activeLoans.length > 0
+                            ? `**${summary.activeLoans.length} Active**\nOldest due: <t:${Math.floor(summary.activeLoans[0].dueDate.getTime() / 1000)}:R>`
                             : "None", inline: true
                     },
                     { name: "<:graph:1445689267861979197> Investments", value: `${summary.investments.length} Active`, inline: true }
@@ -63,31 +63,57 @@ async function handleButton(interaction: ButtonInteraction) {
         case "bank_loans": {
             const summary = await getFinancialSummary(user.id);
             const config = await getGuildConfig(guildId);
+            // Temporary cast as prisma generate failed due to lock
+            const limits = calculateCreditLimits(summary.creditScore, (config as any));
 
             const embed = new EmbedBuilder()
-                .setTitle("💸 Loan Management")
-                .setDescription(summary.activeLoan
-                    ? `You have an active loan.`
-                    : `You are eligible for a loan up to **${config.currencyEmoji} ${(config.loanMaxAmount || summary.creditScore * 10).toLocaleString()}**.\nInterest Rate: **${config.loanInterestRate}%**`)
-                .setColor("#FF5555");
-
-            if (summary.activeLoan) {
-                embed.addFields(
-                    { name: "Principal", value: `${summary.activeLoan.amount}`, inline: true },
-                    { name: "Repayment Amount", value: `${summary.activeLoan.totalRepayment}`, inline: true },
-                    { name: "Due Date", value: summary.activeLoan.dueDate.toLocaleDateString(), inline: true }
+                .setTitle("<a:credits:1445689337172721716> Loan Management")
+                .setColor(summary.activeLoans.length > 0 ? "#FFA500" : "#00FF00")
+                .addFields(
+                    { name: "Credit Score", value: `**${summary.creditScore}**`, inline: true },
+                    { name: "Max Loan", value: `${fmtCurrency(limits.maxLoan, config.currencyEmoji)}`, inline: true },
+                    { name: "Max Duration", value: `${formatDuration(limits.maxDays * 86400000)}`, inline: true }
                 );
+
+            if (summary.activeLoans.length > 0) {
+                const loanFields = summary.activeLoans.map((loan, i) => {
+                    const isOverdue = new Date() > new Date(loan.dueDate);
+                    const status = isOverdue ? "**OVERDUE**" : "Active";
+                    const dueTimestamp = Math.floor(loan.dueDate.getTime() / 1000);
+                    return {
+                        name: `Loan #${i + 1} (${status})`,
+                        value: `**Principal:** ${fmtCurrency(loan.amount, config.currencyEmoji)}\n**Repayment:** ${fmtCurrency(loan.totalRepayment, config.currencyEmoji)}\n**Due:** <t:${dueTimestamp}:R> (${loan.dueDate.toLocaleDateString()})`,
+                        inline: false
+                    };
+                });
+
+                const maxLoans = (config as any).maxActiveLoans || 1;
+                embed.setDescription(`**Active Loans (${summary.activeLoans.length}/${maxLoans})**\nRepayments are applied to the oldest loan first.`)
+                    .addFields(loanFields);
+
+                // If any loan is overdue, red color
+                const anyOverdue = summary.activeLoans.some(l => new Date() > new Date(l.dueDate));
+                if (anyOverdue) embed.setColor("#FF0000");
+
+            } else {
+                embed.setDescription(`You are eligible for a loan based on your credit score.\n**Interest Rate:** ${config.loanInterestRate}%`);
             }
 
             const row = new ActionRowBuilder<ButtonBuilder>();
 
-            if (!summary.activeLoan) {
+            const maxLoans = config.maxActiveLoans || 1;
+
+            // Allow apply if below max loans
+            if (summary.activeLoans.length < maxLoans) {
                 row.addComponents(
                     new ButtonBuilder().setCustomId("loan_apply_btn").setLabel("Apply for Loan").setStyle(ButtonStyle.Success)
                 );
-            } else {
+            }
+
+            // Allow repay if any loan exists
+            if (summary.activeLoans.length > 0) {
                 row.addComponents(
-                    new ButtonBuilder().setCustomId("loan_repay_btn").setLabel("Repay Loan").setStyle(ButtonStyle.Primary)
+                    new ButtonBuilder().setCustomId("loan_repay_btn").setLabel("Repay Loan").setStyle(ButtonStyle.Primary).setEmoji("1445689337172721716")
                 );
             }
 
@@ -153,8 +179,8 @@ async function handleButton(interaction: ButtonInteraction) {
                     { name: "<:MoneyBag:1446970451606896781> Net Worth", value: `${config.currencyEmoji} ${summary.netWorth.toLocaleString()}`, inline: true },
                     { name: "<a:credits:1445689337172721716> Credit Score", value: `${summary.creditScore}`, inline: true },
                     {
-                        name: "<:OnLoan:1446971056865935381> Active Loan", value: summary.activeLoan
-                            ? `**${config.currencyEmoji} ${summary.activeLoan.totalRepayment.toLocaleString()}**`
+                        name: "<:OnLoan:1446971056865935381> Active Loans", value: summary.activeLoans.length > 0
+                            ? `**${summary.activeLoans.length} Active**`
                             : "None", inline: true
                     },
                     { name: "<:graph:1445689267861979197> Investments", value: `${summary.investments.length} Active`, inline: true }
@@ -290,14 +316,15 @@ async function handleModal(interaction: ModalSubmitInteraction) {
                 // hack for 'all'
                 if (amountStr.toLowerCase() === 'all') {
                     const summary = await getFinancialSummary(user.id);
-                    if (summary.activeLoan) amount = summary.activeLoan.totalRepayment;
+                    // Sum of all active loans repayment
+                    if (summary.activeLoans.length > 0) amount = summary.activeLoans.reduce((sum, l) => sum + l.totalRepayment, 0);
                     else amount = 0;
                 } else {
                     throw new Error("Invalid amount.");
                 }
             }
 
-            const result = await repayLoan(user.id, amount);
+            const result = await repayLoan(user.id, guildId, amount);
 
             // Log Repayment
             const config = await getGuildConfig(guildId);
