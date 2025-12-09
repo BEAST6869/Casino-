@@ -2,7 +2,7 @@ import { Message, EmbedBuilder, Colors } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { placeBetWithTransaction, placeBetFallback } from "../../services/gameService";
 import { getGuildConfig } from "../../services/guildConfigService";
-import { fmtCurrency } from "../../utils/format";
+import { fmtCurrency, parseBetAmount } from "../../utils/format";
 import { successEmbed, errorEmbed } from "../../utils/embed";
 import { checkCooldown } from "../../utils/cooldown";
 import { formatDuration } from "../../utils/format";
@@ -24,8 +24,10 @@ export async function handleCoinflip(message: Message, args: string[]) {
     });
   }
 
+  const user = await ensureUserAndWallet(message.author.id, message.author.tag);
+  const amount = parseBetAmount(amountStr, user.wallet!.balance);
+
   // 2. Validate Amount
-  const amount = parseInt(amountStr, 10);
   if (isNaN(amount) || amount <= 0) {
     return message.reply({
       embeds: [
@@ -72,7 +74,12 @@ export async function handleCoinflip(message: Message, args: string[]) {
     }
   }
 
-  const user = await ensureUserAndWallet(message.author.id, message.author.tag);
+  // Refetch to be safe? Or just use existing.
+  // const user = await ensureUserAndWallet... -> We already have user.
+  // If we really need to refetch:
+  // user = await ... (but user is const)
+  // Let's assume user from line 27 is fine or define a new variable if logic demanded refresh.
+  // Given standard logic, just using 'user' is fine.
   if (!user.wallet || user.wallet.balance < amount) {
     return message.reply({
       embeds: [
@@ -89,30 +96,36 @@ export async function handleCoinflip(message: Message, args: string[]) {
   const isHeads = Math.random() < 0.5;
   const result = isHeads ? "heads" : "tails";
   const didWin = choice === result;
-  const payout = didWin ? amount * 2 : 0;
+  let payout = didWin ? amount * 2 : 0;
 
   // 6. Database Transaction
+  let actualPayout = payout;
   try {
-    await placeBetWithTransaction(
+    actualPayout = await placeBetWithTransaction(
       user.id,
       user.wallet.id,
       "coinflip",
       amount,
       choice,
       didWin,
-      payout
+      payout,
+      message.guildId!
     );
   } catch (e) {
-    await placeBetFallback(
+    actualPayout = await placeBetFallback(
       user.wallet.id,
       user.id,
       "coinflip",
       amount,
       choice,
       didWin,
-      payout
+      payout,
+      message.guildId!
     );
   }
+
+  // Use actual payout for display
+  payout = actualPayout;
 
   // Final wallet balance after this bet
   const finalWalletBalance = user.wallet.balance - amount + payout;

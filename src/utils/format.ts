@@ -65,3 +65,46 @@ export const parseDurationToDays = (input: string): number | null => {
   if (seconds === null) return null;
   return seconds / 86400;
 };
+
+/**
+ * Parses a bet amount string.
+ * Supports: 'all', 'max', 'allin' -> maxBalance
+ * Suffixes: k (1e3), m (1e6), b (1e9)
+ * Scientific: 1e4 -> 10000
+ */
+/**
+ * Parses a string input for currency amount.
+ * Supports:
+ * - "all", "max", "allin" -> returns maxBalance
+ * - "k" suffix -> thousands (e.g. 5k = 5000)
+ * - "m" suffix -> millions (e.g. 1m = 1000000)
+ * - "b" suffix -> billions
+ * - Scientific notation (e.g. 1e4)
+ * - Plain numbers
+ */
+export const parseSmartAmount = (input: string, maxBalance: number = Infinity): number => {
+  if (!input) return NaN;
+  const lower = input.toLowerCase();
+
+  if (["all", "max", "allin"].includes(lower)) {
+    return maxBalance;
+  }
+
+  // Handle suffixes
+  const suffixMultipliers: { [key: string]: number } = {
+    'k': 1e3,
+    'm': 1e6,
+    'b': 1e9
+  };
+
+  const suffix = lower[lower.length - 1];
+  if (suffixMultipliers[suffix]) {
+    const numPart = parseFloat(lower.slice(0, -1));
+    return Math.floor(numPart * suffixMultipliers[suffix]);
+  }
+
+  // Handle scientific notation or plain number
+  return Math.floor(parseFloat(lower));
+};
+
+export const parseBetAmount = parseSmartAmount;

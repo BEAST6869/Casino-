@@ -1,12 +1,12 @@
 
 import cron from "node-cron";
 import prisma from "./utils/prisma";
-import { checkMaturedInvestments, processAllInvestments } from "./services/bankingService";
+import { checkMaturedInvestments, processAllInvestments, processOverdueLoans } from "./services/bankingService";
 import { Client } from "discord.js";
 
 export function initScheduler(client: Client) {
     // Run every day at midnight
-    cron.schedule("0 0 * * *", async () => {
+    cron.schedule("* * * * *", async () => {
         console.log("🕒 Running daily banking jobs...");
 
         try {
@@ -14,24 +14,10 @@ export function initScheduler(client: Client) {
             const processedCount = await processAllInvestments();
             console.log(`✅ Processed ${processedCount} matured investments.`);
 
-            // 2. Accrue Interest for Loans (simple logic: increment totalRepayment?)
-            // We decided interest is fixed at start (Principal + Interest). So maybe just check due dates?
-
-            const defaultedLoans = await prisma.loan.findMany({
-                where: {
-                    status: "ACTIVE",
-                    dueDate: { lt: new Date() }
-                }
-            });
-
-            for (const loan of defaultedLoans) {
-                // Mark as defaulted or apply penalty
-                // update credit score
-                await prisma.user.update({
-                    where: { id: loan.userId },
-                    data: { creditScore: { decrement: 50 } }
-                });
-                console.log(`Loan ${loan.id} defaulted. User ${loan.userId} penalized.`);
+            // 2. Process Overdue Loans
+            const loanCount = await processOverdueLoans(client);
+            if (loanCount > 0) {
+                console.log(`✅ Processed ${loanCount} overdue loans.`);
             }
 
         } catch (err) {

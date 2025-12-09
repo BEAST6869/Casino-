@@ -1,8 +1,9 @@
 import { Message, EmbedBuilder } from "discord.js";
+import { parseDuration, parseSmartAmount } from "../../utils/format";
 import { updateGuildConfig, getGuildConfig } from "../../services/guildConfigService";
 import { successEmbed, errorEmbed } from "../../utils/embed";
 
-export async function handleSetEconomyConfig(message: Message, args: string[], type: "loan" | "fd" | "rd" | "tax" | "credit-reward" | "credit-penalty" | "credit-cap" | "max-loans") {
+export async function handleSetEconomyConfig(message: Message, args: string[], type: "loan" | "fd" | "rd" | "tax" | "credit-reward" | "credit-penalty" | "credit-cap" | "min-credit-cap" | "max-loans" | "toggle-ask" | "bank-limit" | "wallet-limit") {
     if (!message.guild) return;
 
     // Check permissions (Admin only)
@@ -57,12 +58,42 @@ export async function handleSetEconomyConfig(message: Message, args: string[], t
             name = "Max Credit Score Cap";
             suffix = " pts";
             break;
+        case "min-credit-cap":
+            field = "minCreditScore";
+            name = "Min Credit Score Cap";
+            suffix = " pts";
+            break;
         case "max-loans":
             if (value < 1) return message.reply({ embeds: [errorEmbed(message.author, "Invalid Limit", "Max active loans must be at least 1.")] });
             field = "maxActiveLoans";
             name = "Max Active Loans";
             suffix = "";
             break;
+        case "bank-limit":
+            field = "bankLimit";
+            name = "Bank Capacity Limit";
+            suffix = "";
+            break;
+        case "wallet-limit":
+            field = "walletLimit";
+            name = "Wallet Capacity Limit";
+            suffix = "";
+            break;
+        case "toggle-ask":
+            // Special handling for boolean toggle. 
+            // We interpret value > 0 as true, 0 as false? Or just toggle?
+            // User requested "enable/disable". args[0] might be "on"/"off".
+            // But this function expects an int parse at the top. 
+            // I should modify the top parsing or just accept 1/0.
+            // Let's stick to 1=Enabled, 0=Disabled for simplicity within this function structure.
+            field = "enableAskCommand";
+            name = "Ask Command Status";
+            suffix = value > 0 ? "Enabled" : "Disabled";
+            // We need to cast value to boolean for the DB update
+            await updateGuildConfig(message.guild.id, { [field]: value > 0 });
+            return message.reply({
+                embeds: [successEmbed(message.author, "Configuration Updated", `Successfully set **Ask Command** to **${value > 0 ? "Enabled" : "Disabled"}**.`)]
+            });
     }
 
     await updateGuildConfig(message.guild.id, { [field]: value });

@@ -32,11 +32,20 @@ export function errorEmbed(user: User, title: string, desc?: string) {
 }
 
 // UPDATED: Now accepts 'emoji' string
-export function balanceEmbed(user: User, wallet: number, bank: number, emoji: string) {
+// UPDATED: Now accepts limits
+export function balanceEmbed(user: User, wallet: number, bank: number, emoji: string, walletLimit?: number | null, bankLimit?: number | null) {
+  const formatField = (amount: number, limit?: number | null) => {
+    const amtStr = fmtCurrency(amount, emoji);
+    if (limit) {
+      return `${amtStr} / ${fmtCurrency(limit, emoji)}`;
+    }
+    return amtStr;
+  };
+
   return baseEmbed(user)
     .setTitle(`${user.username}'s Balance`)
     .addFields(
-      { name: "Wallet", value: fmtCurrency(wallet, emoji), inline: true },
-      { name: "Bank", value: fmtCurrency(bank, emoji), inline: true }
+      { name: "Wallet", value: formatField(wallet, walletLimit), inline: true },
+      { name: "Bank", value: formatField(bank, bankLimit), inline: true }
     );
 }

@@ -6,13 +6,13 @@ const guildConfigService_1 = require("../../services/guildConfigService");
 const emojiRegistry_1 = require("../../utils/emojiRegistry");
 async function handleHelp(message) {
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
-    const prefix = config.prefix;
+    const prefix = config.prefix || "!";
     // --- EMOJI CONFIGURATION ---
     // 1. Economy (Animated Money)
     const idEconomy = "1445732360204193824";
     const strEconomy = `<a:money:${idEconomy}>`;
     // 2. Income (Server Currency)
-    const incomeRaw = config.currencyEmoji;
+    const incomeRaw = config.currencyEmoji || "💰";
     const idIncome = incomeRaw.match(/:(\d+)>/)?.[1] ?? (incomeRaw.match(/^\d+$/) ? incomeRaw : undefined);
     // 3. Games (Casino)
     const idGames = "1445732641545654383";
@@ -65,11 +65,11 @@ async function handleHelp(message) {
         let embed = new discord_js_1.EmbedBuilder().setColor(discord_js_1.Colors.Blurple);
         if (val === "economy") {
             embed.setTitle(`${strEconomy} Economy & Shop`)
-                .addFields({ name: `\`${prefix}profile\``, value: "View your stats, net worth & credit score." }, { name: `\`${prefix}bal [user]\``, value: "Check wallet and bank balance." }, { name: `\`${prefix}lb\``, value: "View Server Leaderboard (Net Worth)." }, { name: `\`${prefix}lb-wallet\``, value: "View Cash-only Leaderboard." }, { name: `\`${prefix}shop\``, value: "View and buy items from the store." }, { name: `\`${prefix}inv\``, value: "View your purchased items." }, { name: `\`${prefix}dep <amount|all>\``, value: "Deposit money to bank." }, { name: `\`${prefix}with <amount|all>\``, value: "Withdraw money from bank." }, { name: `\`${prefix}rob <user>\``, value: "Attempt to steal from a user." }, { name: `\`${prefix}transfer <amount> <user>\``, value: "Gift money to another user." });
+                .addFields({ name: `\`${prefix}profile\``, value: "View your stats, net worth & credit score." }, { name: `\`${prefix}credit\``, value: "💳 **Credit Profile** (Score, Loan Limits, Active Loan)." }, { name: `\`${prefix}bank\``, value: "🏦 **Financial Dashboard** (Loans, Investments, Net Worth)." }, { name: `\`${prefix}bm\``, value: "🏴‍☠️ **Black Market** (Buy/Sell/List Items Globaly)." }, { name: `\`${prefix}bal [user]\``, value: "Check wallet and bank balance." }, { name: `\`${prefix}lb\``, value: "View Server Leaderboard (Net Worth)." }, { name: `\`${prefix}lb-wallet\``, value: "View Cash-only Leaderboard." }, { name: `\`${prefix}shop\``, value: "View and buy items from the store." }, { name: `\`${prefix}inv\``, value: "View your purchased items." }, { name: `\`${prefix}dep <amount|all>\``, value: "Deposit money to bank." }, { name: `\`${prefix}with <amount|all>\``, value: "Withdraw money from bank." }, { name: `\`${prefix}rob <user>\``, value: "Attempt to steal from a user." }, { name: `\`${prefix}rank [user]\``, value: "Check your current level and XP." }, { name: `\`${prefix}set-theme <color>\``, value: "Customize your profile embed color." }, { name: `\`${prefix}transfer <amount> <user>\``, value: "Gift money to another user." });
         }
         else if (val === "income") {
             embed.setTitle(`${config.currencyEmoji} Income Commands`)
-                .addFields({ name: `\`${prefix}work\``, value: "Earn standard income." }, { name: `\`${prefix}beg\``, value: "Small earnings with low cooldown." }, { name: `\`${prefix}crime\``, value: "High risk, high reward." }, { name: `\`${prefix}slut\``, value: "Risky income command." });
+                .addFields({ name: `\`${prefix}work\``, value: "Earn standard income." }, { name: `\`${prefix}beg\``, value: "Small earnings with low cooldown." }, { name: `\`${prefix}crime\``, value: "High risk, high reward." }, { name: `\`${prefix}slut\``, value: "Risky income command." }, { name: `\`${prefix}collect\``, value: "Claim role income." });
         }
         else if (val === "games") {
             embed.setTitle(`${strGames} Games`)
@@ -83,24 +83,51 @@ async function handleHelp(message) {
             }
             const eSettings = (0, emojiRegistry_1.emojiInline)("settings", message.guild) || "⚙️";
             embed.setTitle(`${eSettings} Admin Configuration`)
-                .addFields({ name: "🏦 **Economy Control**", value: `\`${prefix}addmoney <user> <amount>\`\n` +
+                .addFields({
+                name: "🏦 **Old Economy Control**", value: `\`${prefix}addmoney <user> <amount>\`\n` +
                     `\`${prefix}removemoney <user> <amount> [bank]\`\n` +
                     `\`${prefix}reseteconomy confirm\``
-            }, { name: "🛒 **Shop Management**", value: `\`${prefix}shopadd <price> <name>\` (Quick Add)\n` +
+            }, {
+                name: "📈 **Modern Economy Config**", value: `\`${prefix}setloan / setfd / setrd <0-100>\` (Interest Rates)\n` +
+                    `\`${prefix}settax <0-100>\` (Black Market Tax %)`
+            }, {
+                name: "💳 **Credit & Loans**", value: `\`${prefix}score [user]\`: View credit profile\n` +
+                    `\`${prefix}view-credit-tiers\`: List tiers\n` +
+                    `\`${prefix}set-credit-config <score> <loan> <time>\`\n` +
+                    `\`${prefix}delete-credit-tier <score>\`\n` +
+                    `\`${prefix}set-credit-score @user <amount>\`\n` +
+                    `\`${prefix}set-max-loans <amount>\`\n` +
+                    `\`${prefix}set-credit-cap <score>\`\n` +
+                    `\`${prefix}set-credit-reward/penalty <amount>\``
+            }, {
+                name: "🛒 **Shop Management**", value: `\`${prefix}shopadd <price> <name>\` (Quick Add)\n` +
                     `\`${prefix}manageitem [name]\` (Interactive Edit/Delete)`
-            }, { name: "⚙️ **Settings**", value: `\`${prefix}setprefix <symbol>\`\n` +
+            }, {
+                name: "⚙️ **Settings**", value: `\`${prefix}viewconfig\`\n` +
+                    `\`${prefix}setprefix <symbol>\`\n` +
+                    `\`${prefix}setcurrency <symbol>\`\n` +
                     `\`${prefix}setemoji <emoji>\`\n` +
+                    `\`${prefix}addemoji <name> <url>\`\n` +
                     `\`${prefix}setstartmoney <amount>\`\n` +
                     `\`${prefix}minbet <amount>\``
-            }, { name: "👮 **Robbery Settings**", value: `\`${prefix}setrob success <0-100>\`\n` +
-                    `\`${prefix}setrob fine <0-100>\`\n` +
+            }, {
+                name: "🛡️ **Moderation**", value: `\`${prefix}casino-ban <user> [reason]\`\n` +
+                    `\`${prefix}casino-unban <user>\`\n` +
+                    `\`${prefix}casino-ban-list\``
+            }, {
+                name: "👮 **Robbery Settings**", value: `\`${prefix}setrob success/fine <0-100>\`\n` +
                     `\`${prefix}setrob cooldown <seconds>\`\n` +
                     `\`${prefix}setrob immunity <add/remove> <role>\``
-            }, { name: "💰 **Income Settings**", value: `\`${prefix}setincome <cmd> <min|max> <amount>\`\n` +
-                    `\`${prefix}setincomecooldown <cmd> <seconds>\``
+            }, {
+                name: "💰 **Income Settings**", value: `\`${prefix}setincome <cmd> <min|max> <amount>\`\n` +
+                    `\`${prefix}setincomecooldown <cmd> <seconds>\`\n` +
+                    `\`${prefix}set-role-income @Role <amt> <time>\``
             });
         }
         await i.reply({ embeds: [embed], ephemeral: true });
+    });
+    collector.on("end", () => {
+        // Clean up logic if needed
     });
 }
 //# sourceMappingURL=help.js.map

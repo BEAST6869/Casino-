@@ -10,8 +10,19 @@ exports.getBankByUserId = getBankByUserId;
 exports.removeMoneyFromBank = removeMoneyFromBank;
 // src/services/bankService.ts
 const prisma_1 = __importDefault(require("../utils/prisma"));
-/** ensure bank row by user.id (prisma User.id) */
-async function ensureBankForUser(userId) {
+/** ensure bank row by user.id (prisma User.id) OR discordId */
+async function ensureBankForUser(userIdOrDiscordId) {
+    let userId = userIdOrDiscordId;
+    // Check if it's a Discord ID look-alike (digits) or assume it is if not ObjectId format
+    // Better: Try to find user by ID first. If not found, try Discord ID.
+    // Actually, since we have mixed usage, let's just do a robust lookup.
+    if (!userIdOrDiscordId.match(/^[0-9a-fA-F]{24}$/)) {
+        // Not an ObjectId, assume Discord ID
+        const user = await prisma_1.default.user.findUnique({ where: { discordId: userIdOrDiscordId } });
+        if (!user)
+            throw new Error("User not found for bank creation.");
+        userId = user.id;
+    }
     const bank = await prisma_1.default.bank.findUnique({ where: { userId } });
     if (bank)
         return bank;
@@ -67,16 +78,18 @@ async function removeMoneyFromBank(userId, amount) {
     const wallet = await prisma_1.default.wallet.findUnique({ where: { userId } });
     if (!wallet)
         throw new Error("Wallet not found (DB Error).");
-    await prisma_1.default.$transaction([
+    const [updatedBank] = await prisma_1.default.$transaction([
         prisma_1.default.bank.update({ where: { userId }, data: { balance: { decrement: amount } } }),
         prisma_1.default.transaction.create({
             data: {
                 walletId: wallet.id,
                 amount: -amount,
                 type: "admin_remove_bank",
-                meta: { by: "admin" }
+                meta: { by: "admin" },
+                isEarned: false
             }
         })
     ]);
+    return updatedBank.balance;
 }
 //# sourceMappingURL=bankService.js.map

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSetIncomeCooldown = handleSetIncomeCooldown;
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
+const format_1 = require("../../utils/format");
 const SUPPORTED = ["work", "beg", "crime", "slut"];
 async function handleSetIncomeCooldown(message, args) {
     try {
@@ -13,10 +14,11 @@ async function handleSetIncomeCooldown(message, args) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins only.")] });
         }
         const cmd = (args[0] ?? "").toLowerCase();
-        const seconds = Math.floor(Number(args[1] ?? NaN));
-        if (!SUPPORTED.includes(cmd) || !Number.isFinite(seconds) || seconds < 0) {
+        const timeStr = args.slice(1).join(" "); // "work 1h 30m"
+        const seconds = (0, format_1.parseDuration)(timeStr);
+        if (!SUPPORTED.includes(cmd) || seconds === null || seconds < 0) {
             return message.reply({
-                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setincomecooldown <work|beg|crime|slut> <seconds>`")]
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setincomecooldown <work|beg|crime|slut> <duration>`\nExample: `!setincomecooldown work 1h 30m`")]
             });
         }
         await prisma_1.default.incomeConfig.upsert({
@@ -25,7 +27,7 @@ async function handleSetIncomeCooldown(message, args) {
             update: { cooldown: seconds }
         });
         return message.reply({
-            embeds: [(0, embed_1.successEmbed)(message.author, "Cooldown Updated", `Set **${cmd}** cooldown to **${seconds}s**`)]
+            embeds: [(0, embed_1.successEmbed)(message.author, "Cooldown Updated", `Set **${cmd}** cooldown to **${(0, format_1.formatDuration)(seconds * 1000)}**`)]
         });
     }
     catch (err) {

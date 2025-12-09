@@ -53,7 +53,11 @@ export async function safeInteractionReply(interaction: Interaction, opts: { con
       // @ts-ignore
       return interaction.reply({ content, ephemeral });
     }
-  } catch (err) {
+  } catch (err: any) {
+    if (err.code === 10062) {
+      // Unknown interaction - ignore, as it's too late to reply
+      return;
+    }
     console.error("safeInteractionReply failed:", err);
   }
 }

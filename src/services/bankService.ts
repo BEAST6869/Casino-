@@ -21,26 +21,42 @@ export async function ensureBankForUser(userIdOrDiscordId: string) {
   return prisma.bank.create({ data: { userId, balance: 0 } });
 }
 
+import { getGuildConfig } from "./guildConfigService";
+
 /** deposit from wallet -> bank (used by !deposit command) */
-export async function depositToBank(walletId: string, userId: string, amount: number) {
+export async function depositToBank(walletId: string, userId: string, amount: number, guildId: string) {
   if (amount <= 0) throw new Error("Amount must be greater than 0.");
   const bank = await ensureBankForUser(userId);
 
-  // Ensure wallet has funds
+  // Check Bank Limit & Partial Deposit
+  const config = await getGuildConfig(guildId);
+  let depositAmount = amount;
+
+  if (config.bankLimit) {
+    const space = config.bankLimit - bank.balance;
+    if (space <= 0) {
+      throw new Error(`Bank limit of ${config.bankLimit} reached.`);
+    }
+    if (depositAmount > space) {
+      depositAmount = space;
+    }
+  }
+
+  // Ensure wallet has funds (for the *actual* deposit amount)
   const wallet = await prisma.wallet.findUnique({ where: { id: walletId } });
   if (!wallet) throw new Error("Wallet not found.");
-  if (wallet.balance < amount) throw new Error("Insufficient wallet balance.");
+  if (wallet.balance < depositAmount) throw new Error("Insufficient wallet balance.");
 
   await prisma.$transaction([
     prisma.transaction.create({
-      data: { walletId, amount: -amount, type: "wallet_to_bank", meta: { toBank: true }, isEarned: false }
+      data: { walletId, amount: -depositAmount, type: "wallet_to_bank", meta: { toBank: true }, isEarned: false }
     }),
-    prisma.wallet.update({ where: { id: walletId }, data: { balance: { decrement: amount } } }),
-    prisma.bank.update({ where: { id: bank.id }, data: { balance: { increment: amount } } }),
-    prisma.audit.create({ data: { userId: wallet.userId, type: "bank_deposit", meta: { amount } } })
+    prisma.wallet.update({ where: { id: walletId }, data: { balance: { decrement: depositAmount } } }),
+    prisma.bank.update({ where: { id: bank.id }, data: { balance: { increment: depositAmount } } }),
+    prisma.audit.create({ data: { userId: wallet.userId, type: "bank_deposit", meta: { amount: depositAmount } } })
   ]);
 
-  return bank;
+  return { bank, actualAmount: depositAmount };
 }
 
 /** withdraw from bank -> wallet */

@@ -6,6 +6,7 @@ const incomeService_1 = require("../../services/incomeService");
 const guildConfigService_1 = require("../../services/guildConfigService"); // Cached Config
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
+const discordLogger_1 = require("../../utils/discordLogger");
 async function handleIncome(message) {
     const [cmd] = message.content.slice(1).split(/\s+/);
     const commandKey = cmd.toLowerCase();
@@ -25,11 +26,27 @@ async function handleIncome(message) {
             walletId: user.wallet.id
         });
         if (res.success) {
+            // Log Success
+            await (0, discordLogger_1.logToChannel)(message.client, {
+                guild: message.guild,
+                type: "ECONOMY",
+                title: `Income Success (${commandKey})`,
+                description: `**User:** ${message.author.tag}\n**Amount:** ${(0, format_1.fmtCurrency)(res.amount, emoji)}`,
+                color: 0x00FF00
+            });
             return message.reply({
                 embeds: [(0, embed_1.successEmbed)(message.author, `${commandKey.toUpperCase()} SUCCESS`, `You earned **${(0, format_1.fmtCurrency)(res.amount, emoji)}**!`)]
             });
         }
         else {
+            // Log Failure (Penalty)
+            await (0, discordLogger_1.logToChannel)(message.client, {
+                guild: message.guild,
+                type: "ECONOMY",
+                title: `Income Failed (${commandKey})`,
+                description: `**User:** ${message.author.tag}\n**Penalty:** ${(0, format_1.fmtCurrency)(Math.abs(res.amount), emoji)}`,
+                color: 0xFF0000
+            });
             return message.reply({
                 embeds: [(0, embed_1.errorEmbed)(message.author, `${commandKey.toUpperCase()} FAILED`, `You lost **${(0, format_1.fmtCurrency)(Math.abs(res.amount), emoji)}**!`)]
             });

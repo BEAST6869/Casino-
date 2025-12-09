@@ -11,12 +11,15 @@ export async function handleDepositBank(message: Message, args: string[]) {
 
   const user = await ensureUserAndWallet(message.author.id, message.author.tag);
   try {
-    await depositToBank(user.wallet!.id, user.id, amount);
-    const bank = await getBankByUserId(user.id);
+    const { actualAmount } = await depositToBank(user.wallet!.id, user.id, amount, message.guildId!);
+    const updatedBank = await getBankByUserId(user.id);
+
+    const isPartial = actualAmount < amount;
+    const partialInfo = isPartial ? ` (Partial - Limit Hit)` : "";
 
     return message.reply({
       embeds: [
-        successEmbed(message.author, "Bank Deposit", `Deposited **${amount}**.\nBank Balance: **${bank?.balance}**`)
+        successEmbed(message.author, isPartial ? "Partial Deposit" : "Bank Deposit", `Deposited **${actualAmount}**${partialInfo}.\nBank Balance: **${updatedBank?.balance}**`)
       ]
     });
   } catch (err) {

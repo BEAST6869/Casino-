@@ -1,4 +1,5 @@
 
+import { Client } from "discord.js";
 import prisma from "../utils/prisma";
 import { Loan, Investment, User, GuildConfig } from "@prisma/client";
 import { ensureBankForUser } from "./bankService";
@@ -185,7 +186,7 @@ export async function repayLoan(discordId: string, guildId: string, amount: numb
                         // 1. We already fetched user at start.
                         // 2. We can calculate expected new credit score.
                         // 3. Clamp it.
-                        set: Math.min(Math.max((user.creditScore + scoreChange), 0), (config.maxCreditScore || 2000))
+                        set: Math.min(Math.max((user.creditScore + scoreChange), ((config as any).minCreditScore || 0)), (config.maxCreditScore || 2000))
                     }
                 }
             })
@@ -343,4 +344,84 @@ export async function getFinancialSummary(discordId: string) {
         activeLoans,
         investments
     };
+}
+
+
+
+/**
+ * Process Overdue Loans (Scheduler)
+ * Automatically deducts from bank/wallet and applies penalty.
+ */
+export async function processOverdueLoans(client: Client) {
+    const overdueLoans = await prisma.loan.findMany({
+        where: {
+            status: "ACTIVE",
+            dueDate: { lt: new Date() }
+        }
+    });
+
+    let count = 0;
+
+    for (const loan of overdueLoans) {
+        const user = await prisma.user.findUnique({ where: { id: loan.userId }, include: { bank: true, wallet: true } });
+        if (!user) continue;
+
+        // Find a mutual guild to determine config (Penalty/MinScore)
+        // Since loans are global but config is per-guild, we try to find ONE guild they share.
+        // Ideally we'd store guildId on the loan, but for now we look up.
+        let guildId = null;
+        for (const [gId, guild] of client.guilds.cache) {
+            if (guild.members.cache.has(user.discordId) || (await guild.members.fetch(user.discordId).catch(() => null))) {
+                guildId = gId;
+                break;
+            }
+        }
+
+        // Default config if no guild found (rare, or user left server)
+        // We'll use default penalty 20, minScore 0 if defaults.
+        let penalty = 20;
+        let minScore = 0;
+
+        if (guildId) {
+            const config = await getGuildConfig(guildId);
+            penalty = config.creditScorePenalty;
+            minScore = (config as any).minCreditScore ?? 0;
+        }
+
+        // 1. FORCED DEDUCTION LOGIC
+        // We deduct the FULL amount from the Bank, even if it goes negative.
+        // This is "Overdraft".
+
+        await prisma.bank.update({
+            where: { userId: user.id },
+            data: { balance: { decrement: loan.totalRepayment } }
+        });
+
+        // 2. STATUS UPDATE
+        // Since we forced the payment (creating debt in bank), the loan itself is now settled.
+        const newStatus = "PAID"; // Paid via forced overdraft
+
+        // 3. APPLY PENALTY
+        // Calculate new score respecting MIN CAP.
+        const newScore = Math.max(user.creditScore - penalty, minScore);
+
+        await prisma.$transaction([
+            prisma.loan.update({
+                where: { id: loan.id },
+                data: {
+                    status: newStatus,
+                    totalRepayment: 0
+                }
+            }),
+            prisma.user.update({
+                where: { id: user.id },
+                data: { creditScore: newScore }
+            })
+        ]);
+
+        count++;
+        console.log(`💸 Enforced repayment for ${user.username} (${user.discordId}). Deducted: ${loan.totalRepayment}, New Score: ${newScore}`);
+    }
+
+    return count;
 }

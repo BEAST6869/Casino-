@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getIncomeConfigOrDefault = getIncomeConfigOrDefault;
 exports.runIncomeCommand = runIncomeCommand;
-// src/services/incomeService.ts
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const cooldown_1 = require("../utils/cooldown");
 function rand(min, max) {
@@ -33,8 +32,11 @@ async function runIncomeCommand({ commandKey, discordId, guildId, userId, wallet
     const cfg = await getIncomeConfigOrDefault(guildId, commandKey);
     const cooldownKey = `income:${guildId}:${discordId}:${commandKey}`;
     const cd = (0, cooldown_1.checkCooldown)(cooldownKey, cfg.cooldown);
-    if (cd > 0)
-        throw new Error(`Cooldown active. Try again in ${cd}s`);
+    if (cd > 0) {
+        const expiresAt = (0, cooldown_1.getCooldownExpiry)(cooldownKey);
+        const timestamp = expiresAt ? Math.floor(expiresAt / 1000) : Math.floor((Date.now() / 1000) + cd);
+        throw new Error(`Cooldown active. Try again <t:${timestamp}:R>.`);
+    }
     // pick amount
     const amount = rand(cfg.minPay, cfg.maxPay);
     // determine success

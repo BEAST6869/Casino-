@@ -73,5 +73,6 @@ async function removeMoneyFromWallet(walletId, amount) {
             data: { balance: { decrement: amount } }
         })
     ]);
+    return wallet.balance - amount;
 }
 //# sourceMappingURL=walletService.js.map

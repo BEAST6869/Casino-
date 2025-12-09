@@ -14,6 +14,10 @@ const guildConfigService_1 = require("./services/guildConfigService");
 const interactionHelpers_1 = require("./utils/interactionHelpers");
 const emojiRegistry_1 = require("./utils/emojiRegistry");
 const xpListener_1 = require("./listeners/xpListener");
+const bankInteractionHandler_1 = require("./handlers/bankInteractionHandler");
+const marketInteractionHandler_1 = require("./handlers/marketInteractionHandler");
+const inventoryInteractionHandler_1 = require("./handlers/inventoryInteractionHandler");
+const scheduler_1 = require("./scheduler");
 // --- load slash commands automatically from src/commands/slash ---
 const slashCommands = new Map();
 const slashData = [];
@@ -62,6 +66,7 @@ client.once("ready", async () => {
     await (0, emojiRegistry_1.initEmojiRegistry)(client);
     console.log("Emoji registry keys:", (0, emojiRegistry_1.listEmojiKeys)().slice(0, 200));
     (0, xpListener_1.setupXpListener)(client);
+    (0, scheduler_1.initScheduler)(client);
     // register slash commands to each guild the bot is in (guild-scoped)
     if (slashData.length > 0) {
         const rest = new discord_js_1.REST({ version: "10" }).setToken(token);
@@ -86,25 +91,35 @@ client.once("ready", async () => {
         console.log("No slash commands to register.");
     }
 });
-// interaction (slash) handler
+// interaction (slash & button/modal) handler
 client.on("interactionCreate", async (interaction) => {
     try {
-        // Only handle chat input (slash) commands here
-        if (!interaction.isChatInputCommand?.())
-            return;
-        // Narrow for TypeScript
-        const ci = interaction;
-        const module = slashCommands.get(ci.commandName);
-        if (!module) {
-            // Use the chat-input interaction to reply
-            return ci.reply({ content: "Unknown command.", ephemeral: true });
+        // 1. Slash Commands
+        if (interaction.isChatInputCommand()) {
+            const ci = interaction;
+            const module = slashCommands.get(ci.commandName);
+            if (!module) {
+                return ci.reply({ content: "Unknown command.", ephemeral: true });
+            }
+            return await module.execute(ci);
         }
-        await module.execute(ci);
+        // 2. Banking Interactions
+        const id = interaction.customId || "";
+        if (id.startsWith("bank_") || id.startsWith("loan_") || id.startsWith("invest_") || id.startsWith("repay_")) {
+            return await (0, bankInteractionHandler_1.handleBankInteraction)(interaction);
+        }
+        // 3. Market Interactions
+        if (id.startsWith("market_") || id.startsWith("sell_")) {
+            return await (0, marketInteractionHandler_1.handleMarketInteraction)(interaction);
+        }
+        // 4. Inventory Interactions
+        if (id.startsWith("inv_")) {
+            return await (0, inventoryInteractionHandler_1.handleInventoryInteraction)(interaction);
+        }
     }
     catch (err) {
-        console.error("Slash interaction error:", err);
-        // Use safe helper that handles all interaction types
-        await (0, interactionHelpers_1.safeInteractionReply)(interaction, { content: "Internal error while running command.", ephemeral: true });
+        console.error("Interaction error:", err);
+        await (0, interactionHelpers_1.safeInteractionReply)(interaction, { content: "Internal error while processing interaction.", ephemeral: true });
     }
 });
 // message-based commands with per-guild prefix
@@ -128,7 +143,7 @@ client.on("messageCreate", async (message) => {
         try {
             // mutate for compatibility with your router (it reads message.content)
             message.content = "!" + contentWithoutPrefix;
-            await (0, commandRouter_1.routeMessage)(client, message);
+            await (0, commandRouter_1.routeMessage)(client, message, prefix);
         }
         finally {
             // restore original content

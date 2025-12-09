@@ -11,7 +11,7 @@ import {
 import { ensureUserAndWallet } from "../../services/walletService";
 import { placeBetWithTransaction, placeBetFallback } from "../../services/gameService";
 import { getGuildConfig } from "../../services/guildConfigService";
-import { fmtCurrency } from "../../utils/format";
+import { fmtCurrency, parseBetAmount } from "../../utils/format";
 import { successEmbed, errorEmbed } from "../../utils/embed";
 import { checkCooldown } from "../../utils/cooldown";
 import { formatDuration } from "../../utils/format";
@@ -55,15 +55,14 @@ function formatHand(hand: Card[], hideFirst = false): string {
 
 // --- Main Handler ---
 export async function handleBlackjack(message: Message, args: string[]) {
-  const amountStr = args[0];
-  if (!amountStr) {
-    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!bj <amount>`")] });
+  const user = await ensureUserAndWallet(message.author.id, message.author.tag);
+  const bet = parseBetAmount(args[0], user.wallet!.balance);
+
+  if (isNaN(bet) || bet <= 0) {
+    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Bet", "Please enter a valid amount (e.g., 500, 1k, all).")] });
   }
 
-  const amount = parseInt(amountStr);
-  if (isNaN(amount) || amount <= 0) {
-    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Wager", "Please bet a valid positive amount.")] });
-  }
+  const amount = bet;
 
   const config = await getGuildConfig(message.guildId!);
   const minBet = config.minBet;
@@ -105,7 +104,7 @@ export async function handleBlackjack(message: Message, args: string[]) {
     }
   }
 
-  const user = await ensureUserAndWallet(message.author.id, message.author.tag);
+  // Re-check funds before starting game loop
   if (user.wallet!.balance < amount) {
     return message.reply({ embeds: [errorEmbed(message.author, "Insufficient Funds", "You don't have enough money.")] });
   }
@@ -175,7 +174,8 @@ export async function handleBlackjack(message: Message, args: string[]) {
   // If game over instantly
   if (gameOver) {
     try {
-      await placeBetWithTransaction(user.id, user.wallet!.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout);
+      const actualPayout = await placeBetWithTransaction(user.id, user.wallet!.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout, message.guildId!);
+      payout = actualPayout;
     } catch (e) {
       return message.reply({ content: "Transaction failed." });
     }
@@ -246,13 +246,17 @@ export async function handleBlackjack(message: Message, args: string[]) {
         }
       }
 
+      let actualPayout = payout;
       // Transaction
       try {
-        await placeBetWithTransaction(user.id, user.wallet!.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout);
+        actualPayout = await placeBetWithTransaction(user.id, user.wallet!.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout, message.guildId!);
       } catch (e) {
         await i.update({ content: `Transaction failed: ${(e as Error).message}`, components: [] });
         return;
       }
+
+      // Update local payout variable for the embed
+      payout = actualPayout;
 
       await i.update({ embeds: [getEmbed(true)], components: [] });
     }

@@ -222,6 +222,7 @@ model GuildConfig {
   transferTax   Int      @default(0)
   incomeTax     Int      @default(0)
   bankLimit     Int?     @default(1000000)
+  walletLimit   Int?     @default(1000000)
   interestRate  Int      @default(0) // Logic for savings account interest
   prefix        String   @default("!")
   
@@ -246,10 +247,12 @@ model GuildConfig {
   creditScorePenalty Int    @default(20)   // Score lost on late repayment
   maxCreditScore    Int      @default(2000)
   maxActiveLoans    Int      @default(1)    // Max simultaneous active loans per user
+  minCreditScore    Int      @default(0)    // Minimum credit score floor
 
   gameCooldowns    Json?    @default("{}") // e.g. {"slots": 30, "bj": 10}
 
   logChannelId     String?  // Channel ID for audit logs
+  enableAskCommand Boolean  @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

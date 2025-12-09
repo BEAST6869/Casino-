@@ -2,23 +2,23 @@
 import { Message } from "discord.js";
 import { updateGuildConfig } from "../../services/guildConfigService";
 import { successEmbed, errorEmbed } from "../../utils/embed";
-import { fmtAmount } from "../../utils/format"; // Import
+import { parseSmartAmount, fmtCurrency } from "../../utils/format";
 
 export async function handleSetStartMoney(message: Message, args: string[]) {
-  // ... (Permission checks) ...
-  if (!message.member?.permissions.has("Administrator")) {
-    return message.reply({ embeds: [errorEmbed(message.author, "No Permission", "Admins only.")] });
-  }
+    if (!message.guild) return;
+    if (!message.member?.permissions.has("Administrator")) return;
 
-  const amount = Math.floor(Number(args[0] ?? NaN));
-  if (!Number.isFinite(amount) || amount < 0) {
-    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Amount", "Usage: `!setstartmoney <amount>`")] });
-  }
+    const amountStr = args[0];
+    if (!amountStr) {
+        return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!set - start - money <amount>`")] });
+    }
 
-  await updateGuildConfig(message.guildId!, { startMoney: amount });
+    const amount = parseSmartAmount(amountStr);
 
-  // Updated Response
-  return message.reply({
-    embeds: [successEmbed(message.author, "Start Money Updated", `New starting money set to **${fmtAmount(amount)}**`)]
-  });
+    if (isNaN(amount) || amount < 0) {
+        return message.reply({ embeds: [errorEmbed(message.author, "Invalid Amount", "Please provide a valid number.")] });
+    }
+
+    await updateGuildConfig(message.guild.id, { startBalance: amount });
+    return message.reply({ embeds: [successEmbed(message.author, "Start Money Updated", `New users will start with ** ${fmtCurrency(amount)}**.`)] });
 }

@@ -7,6 +7,8 @@ const gameService_1 = require("../../services/gameService");
 const guildConfigService_1 = require("../../services/guildConfigService");
 const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
+const cooldown_1 = require("../../utils/cooldown");
+const format_2 = require("../../utils/format");
 async function handleCoinflip(message, args) {
     // 1. Parse Arguments
     const amountStr = args[0];
@@ -27,6 +29,8 @@ async function handleCoinflip(message, args) {
             ],
         });
     }
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+    const emoji = config.currencyEmoji;
     // 3. Validate Choice
     let choice;
     if (["heads", "head", "h"].includes(choiceRaw))
@@ -41,6 +45,18 @@ async function handleCoinflip(message, args) {
         });
     }
     // 4. Check Funds
+    // Check Cooldown
+    const cooldowns = config.gameCooldowns || {};
+    const cdSeconds = cooldowns["cf"] || 0;
+    if (cdSeconds > 0) {
+        const key = `game:cf:${message.guildId}:${message.author.id}`;
+        const remaining = (0, cooldown_1.checkCooldown)(key, cdSeconds);
+        if (remaining > 0) {
+            return message.reply({
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Cooldown Active", `⏳ Please wait **${(0, format_2.formatDuration)(remaining * 1000)}** before flipping again.`)]
+            });
+        }
+    }
     const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
     if (!user.wallet || user.wallet.balance < amount) {
         return message.reply({
@@ -49,8 +65,6 @@ async function handleCoinflip(message, args) {
             ],
         });
     }
-    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
-    const emoji = config.currencyEmoji; // e.g. "<a:casino_cash:1444352930080882809>"
     // 5. The Flip
     const isHeads = Math.random() < 0.5;
     const result = isHeads ? "heads" : "tails";

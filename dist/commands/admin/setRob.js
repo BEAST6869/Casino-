@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSetRob = handleSetRob;
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
+const format_1 = require("../../utils/format");
 async function handleSetRob(message, args) {
     if (!message.member?.permissions.has("Administrator")) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins only.")] });
@@ -39,13 +40,14 @@ async function handleSetRob(message, args) {
         await (0, guildConfigService_1.updateGuildConfig)(message.guildId, { robFinePct: pct });
         return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Updated", `Rob failure fine set to **${pct}%**`)] });
     }
-    // !setrob cooldown 300
+    // !setrob cooldown 300 (or 2h 30m)
     if (sub === "cooldown" || sub === "cd") {
-        const sec = parseInt(val);
-        if (isNaN(sec) || sec < 0)
-            return message.reply("Invalid seconds.");
+        const timeStr = args.slice(1).join(" ");
+        const sec = (0, format_1.parseDuration)(timeStr || val);
+        if (sec === null || sec < 0)
+            return message.reply("Invalid duration (e.g. `1h 30m`, `300`).");
         await (0, guildConfigService_1.updateGuildConfig)(message.guildId, { robCooldown: sec });
-        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Updated", `Rob cooldown set to **${sec}s**`)] });
+        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Updated", `Rob cooldown set to **${(0, format_1.formatDuration)(sec * 1000)}**`)] });
     }
     // !setrob immunity add @Role
     if (sub === "immunity") {

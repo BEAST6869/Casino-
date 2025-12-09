@@ -1,7 +1,9 @@
-
 import { Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from "discord.js";
-import { getFinancialSummary } from "../../services/bankingService";
+import { getFinancialSummary, repayLoan } from "../../services/bankingService";
+import { successEmbed, errorEmbed } from "../../utils/embed";
 import { getGuildConfig } from "../../services/guildConfigService";
+import { fmtCurrency, parseSmartAmount } from "../../utils/format";
+import { ensureUserAndWallet } from "../../services/walletService";
 
 export const data = {
     name: "bank",
@@ -17,11 +19,37 @@ export async function execute(message: Message | any, args: string[]) {
 
     if (!user || !guildId) return;
 
+    // Assuming subcommand parsing is handled here or before this block
+    const subCommand = args[0]?.toLowerCase();
+
+    if (subCommand === "repay") {
+        const amountStr = args[1];
+        if (!amountStr) return message.reply("Usage: `!bank repay <amount>`");
+
+        const userWallet = await ensureUserAndWallet(message.author.id, message.author.tag);
+        // If passing max? We might want to pass wallet balance or loan balance?
+        // Usually repay all means repay entire loan. 
+        // But parseSmartAmount handles "all" as maxBalance passed locally.
+        // We'd need to fetch loan first to know what "all" means if logical max is loan size.
+        // OR we just use wallet balance as absolute max payment capability.
+        // Let's use wallet balance as max for now, logic inside repay might cap it.
+
+        const amount = parseSmartAmount(amountStr, userWallet.wallet!.balance);
+        if (isNaN(amount) || amount <= 0) return message.reply("Invalid amount.");
+
+        try {
+            await repayLoan(user.id, guildId, amount);
+            return message.reply({ embeds: [successEmbed(message.author, "Loan Repaid", `Repaid **${fmtCurrency(amount)}** towards your loan.`)] });
+        } catch (e) {
+            return message.reply({ embeds: [errorEmbed(message.author, "Repayment Failed", (e as Error).message)] });
+        }
+    }
+
     const summary = await getFinancialSummary(user.id);
     const config = await getGuildConfig(guildId);
 
     const embed = new EmbedBuilder()
-        .setTitle(`<:bankk:1445689134181126167> ${user.username}'s Financial Dashboard`)
+        .setTitle(`<: bankk: 1445689134181126167 > ${user.username} 's Financial Dashboard`)
         .setColor("#FFD700") // Gold
         .setThumbnail(user.displayAvatarURL())
         .setDescription(`Welcome to the ${config.currencyName} Bank. Manage your assets and liabilities here.`)

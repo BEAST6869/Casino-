@@ -16,8 +16,8 @@ export async function handleBalance(message: Message) {
 
   // Prevent checking bots (optional, but good practice)
   if (targetUser.bot) {
-    return message.reply({ 
-      embeds: [errorEmbed(message.author, "Error", "Bots do not have wallets.")] 
+    return message.reply({
+      embeds: [errorEmbed(message.author, "Error", "Bots do not have wallets.")]
     });
   }
 
@@ -28,7 +28,7 @@ export async function handleBalance(message: Message) {
 
   return message.reply({
     embeds: [
-      balanceEmbed(targetUser, user.wallet!.balance, bank?.balance ?? 0, config.currencyEmoji)
+      balanceEmbed(targetUser, user.wallet!.balance, bank?.balance ?? 0, config.currencyEmoji, config.walletLimit, config.bankLimit)
     ]
   });
 }

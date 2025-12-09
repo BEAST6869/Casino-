@@ -3,7 +3,7 @@ import { ensureUserAndWallet } from "../../services/walletService";
 import { depositToBank, getBankByUserId } from "../../services/bankService";
 import { getGuildConfig } from "../../services/guildConfigService"; // Cached Config
 import { successEmbed, errorEmbed } from "../../utils/embed";
-import { fmtCurrency } from "../../utils/format";
+import { fmtCurrency, parseSmartAmount } from "../../utils/format";
 import { logToChannel } from "../../utils/discordLogger";
 
 export async function handleDeposit(message: Message, args: string[]) {
@@ -14,26 +14,41 @@ export async function handleDeposit(message: Message, args: string[]) {
   const emoji = config.currencyEmoji;
 
   const wallet = user.wallet!;
-  let amount = 0;
+  const amountStr = args[0];
 
-  if (args[0]?.toLowerCase() === "all") {
-    amount = wallet.balance;
-  } else {
-    amount = parseInt(args[0] || "0");
+  if (!amountStr) {
+    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Amount", "Usage: `!dep <amount/all>`")] });
   }
 
-  if (!amount || amount <= 0) return message.reply({ embeds: [errorEmbed(message.author, "Error", "Invalid amount.")] });
+  const amount = parseSmartAmount(amountStr, user.wallet!.balance);
+
+  if (isNaN(amount) || amount <= 0) {
+    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Amount", "Please enter a valid positive number.")] });
+  }
 
   try {
-    await depositToBank(wallet.id, user.id, amount);
-    const bank = await getBankByUserId(user.id);
+    const { bank, actualAmount } = await depositToBank(wallet.id, user.id, amount, message.guildId!);
+    // Refresh bank used to be handled by getBankByUserId but now we likely have updated bank or can fetch if needed, 
+    // but the return object 'bank' is the *pre-update* object + transaction updates it. 
+    // Actually Prisma update returns the new object. In bankService we returned 'bank' which was the *found* object, not the updated one.
+    // Wait, in my bankService update:
+    /* 
+       prisma.bank.update(...) is inside transaction. 
+       The function likely returns 'bank' which is the OLD object because we just did 'const bank = await ensureBank'.
+       We should probably fetch the new balance or just add actualAmount to the old balance for display.
+       Or better, let's fetch it freshly to be 100% sure. 
+    */
+    const updatedBank = await getBankByUserId(user.id);
+
+    const isPartial = actualAmount < amount;
+    const partialMsg = isPartial ? ` (Partial Deposit - Bank Limit Reached)` : "";
 
     // Log Deposit
     await logToChannel(message.client, {
       guild: message.guild!,
       type: "ECONOMY",
       title: "Bank Deposit",
-      description: `**User:** ${message.author.tag}\n**Amount:** ${fmtCurrency(amount, emoji)}\n**New Balance:** ${fmtCurrency(bank?.balance ?? 0, emoji)}`,
+      description: `**User:** ${message.author.tag}\n**Amount:** ${fmtCurrency(actualAmount, emoji)}${partialMsg}\n**New Balance:** ${fmtCurrency(updatedBank?.balance ?? 0, emoji)}`,
       color: 0x00AAFF
     });
 
@@ -41,8 +56,8 @@ export async function handleDeposit(message: Message, args: string[]) {
       embeds: [
         successEmbed(
           message.author,
-          "Deposit Successful",
-          `Deposited **${fmtCurrency(amount, emoji)}**.\nBank: **${fmtCurrency(bank?.balance ?? 0, emoji)}**`
+          isPartial ? "Partial Deposit" : "Deposit Successful",
+          `Deposited **${fmtCurrency(actualAmount, emoji)}**${partialMsg}.\nBank: **${fmtCurrency(updatedBank?.balance ?? 0, emoji)}**`
         )
       ]
     });

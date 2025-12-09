@@ -7,6 +7,7 @@ const guildConfigService_1 = require("../../services/guildConfigService");
 const walletService_1 = require("../../services/walletService");
 const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
+const discordLogger_1 = require("../../utils/discordLogger");
 // Layout: Items listed in Embed Text.
 // Interaction: Numbered buttons (1-5) below to buy.
 const ITEMS_PER_PAGE = 5;
@@ -66,6 +67,14 @@ async function handleShop(message, args) {
                         }
                         catch { }
                 }
+                // Log Purchase
+                await (0, discordLogger_1.logToChannel)(message.client, {
+                    guild: message.guild,
+                    type: "MARKET",
+                    title: "Shop Purchase",
+                    description: `**User:** ${message.author.tag}\n**Item:** ${item.name}\n**Price:** ${(0, format_1.fmtCurrency)(item.price, emoji)}`,
+                    color: 0x00FF00
+                });
                 return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Purchase Successful", `You bought **${item.name}**!`)] });
             }
             catch (err) {
@@ -130,6 +139,14 @@ async function handleShop(message, args) {
                             catch (e) { }
                         }
                     }
+                    // Log Interactive Purchase
+                    await (0, discordLogger_1.logToChannel)(interaction.client, {
+                        guild: interaction.guild,
+                        type: "MARKET",
+                        title: "Shop Purchase",
+                        description: `**User:** ${interaction.user.tag}\n**Item:** ${bought.name}\n**Price:** ${(0, format_1.fmtCurrency)(bought.price, emoji)}`,
+                        color: 0x00FF00
+                    });
                     await interaction.reply({
                         content: `✅ Purchased **${bought.name}** for **${(0, format_1.fmtCurrency)(bought.price, emoji)}**!`,
                         ephemeral: true

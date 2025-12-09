@@ -1,6 +1,8 @@
 import prisma from "../utils/prisma";
 import { checkCooldown, getCooldownExpiry } from "../utils/cooldown";
 import { formatDuration } from "../utils/format";
+import { getGuildConfig } from "./guildConfigService";
+import { getWalletById } from "./walletService";
 
 function rand(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -79,6 +81,17 @@ export async function runIncomeCommand({
     ]);
 
     return { success: false, amount: -penalty, penalty, attempted: amount };
+  }
+
+  // CHECK WALLET LIMIT (Only on success/income)
+  if (guildId) {
+    const guildConfig = await getGuildConfig(guildId);
+    if (guildConfig.walletLimit) {
+      const wallet = await getWalletById(walletId);
+      if (wallet && wallet.balance + amount > guildConfig.walletLimit) {
+        throw new Error(`Wallet limit of ${guildConfig.walletLimit} reached. Cannot earn more.`);
+      }
+    }
   }
 
   // success: award amount (mark as earned)

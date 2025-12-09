@@ -3,22 +3,35 @@ import { Message } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { transferAnyFunds } from "../../services/transferService";
 import { successEmbed, errorEmbed } from "../../utils/embed";
-import { fmtAmount, fmtCurrency } from "../../utils/format";
+import { fmtAmount, fmtCurrency, parseSmartAmount } from "../../utils/format";
 import { logToChannel } from "../../utils/discordLogger";
 import { getGuildConfig } from "../../services/guildConfigService";
 
 export async function handleTransfer(message: Message, args: string[]) {
   try {
-    const amount = Math.floor(Number(args[0] || 0));
-    const mention = args[1];
+    if (args.length < 2) {
+      return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!transfer @user <amount>`")] });
+    }
 
-    if (!amount || amount <= 0) return message.reply({ embeds: [errorEmbed(message.author, "Invalid Amount", "Usage: `!transfer <amount> @user`")] });
-    if (!mention) return message.reply({ embeds: [errorEmbed(message.author, "Missing Recipient", "Mention a user to transfer to.")] });
+    const targetMention = args[0];
+    const amountString = args[1];
 
-    const toId = mention.replace(/[<@!>]/g, "");
-    if (!/^\d+$/.test(toId)) return message.reply({ embeds: [errorEmbed(message.author, "Invalid Mention", "Couldn't parse mention.")] });
+    const toId = targetMention.replace(/[<@!>]/g, "");
+    if (!/^\d+$/.test(toId)) {
+      return message.reply({ embeds: [errorEmbed(message.author, "Invalid Recipient", "Please mention a valid user to transfer to.")] });
+    }
 
     const sender = await ensureUserAndWallet(message.author.id, message.author.tag);
+    if (!sender.wallet) {
+      return message.reply({ embeds: [errorEmbed(message.author, "Wallet Not Found", "Your wallet could not be found. Please try again.")] });
+    }
+
+    const amount = parseSmartAmount(amountString, sender.wallet.balance);
+
+    if (isNaN(amount) || amount <= 0) {
+      return message.reply({ embeds: [errorEmbed(message.author, "Invalid Amount", "Please enter a valid positive number for the amount.")] });
+    }
+
     try {
       await transferAnyFunds(sender.wallet!.id, toId, amount, message.author.id, message.guildId ?? undefined);
       // Updated response with fmtAmount

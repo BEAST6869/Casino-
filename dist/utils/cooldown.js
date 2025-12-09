@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkCooldown = checkCooldown;
 exports.setCooldown = setCooldown;
 exports.clearCooldown = clearCooldown;
+exports.getCooldownExpiry = getCooldownExpiry;
 // src/utils/cooldowns.ts
 const cooldowns = new Map();
 /**
@@ -31,5 +32,14 @@ function setCooldown(key, secondsFromNow) {
  */
 function clearCooldown(key) {
     cooldowns.delete(key);
+}
+/**
+ * Get the absolute expiry timestamp (ms) for a key, or null if none/expired.
+ */
+function getCooldownExpiry(key) {
+    const expiresAt = cooldowns.get(key);
+    if (!expiresAt || expiresAt <= Date.now())
+        return null;
+    return expiresAt;
 }
 //# sourceMappingURL=cooldown.js.map

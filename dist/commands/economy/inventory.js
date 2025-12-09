@@ -10,34 +10,21 @@ const embed_1 = require("../../utils/embed");
 const emojiRegistry_1 = require("../../utils/emojiRegistry");
 async function handleInventory(message, args) {
     try {
-        // Allow checking other users: !inv @user
         let targetUser = message.mentions.users.first() || message.author;
         if (targetUser.bot) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Error", "Bots cannot hold items.")] });
         }
-        // Ensure the target user exists in DB
         await (0, walletService_1.ensureUserAndWallet)(targetUser.id, targetUser.tag);
         const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
         let emoji = config.currencyEmoji;
-        // FIX: Emoji Resolution Logic
-        // 1. If it's a raw numeric ID, try to resolve it to a full emoji string.
+        // Emoji Resolution
         if (/^\d+$/.test(emoji)) {
             const resolved = message.guild?.emojis.cache.get(emoji);
-            if (resolved) {
-                emoji = resolved.toString();
-            }
-            else {
-                // If ID is valid but not found in this server (and not cached), 
-                // we fallback to a generic symbol to prevent showing a raw number string.
-                emoji = "💰";
-            }
+            emoji = resolved ? resolved.toString() : "💰";
         }
-        // 2. If it is already a full string <...> but renders as text, the bot lacks permission/access.
-        // We cannot fix that via code, the admin must set a valid emoji the bot can "see".
-        // Get inventory emoji
-        const eInv = (0, emojiRegistry_1.emojiInline)("inventory", message.guild) || "🎒";
-        // Fetch Inventory
         const items = await (0, shopService_1.getUserInventory)(targetUser.id, message.guildId);
+        const eInv = (0, emojiRegistry_1.emojiInline)("inventory", message.guild) || "🎒";
+        // 1. Empty Inventory
         if (items.length === 0) {
             const emptyEmbed = new discord_js_1.EmbedBuilder()
                 .setTitle(`${eInv} ${targetUser.username}'s Inventory`)
@@ -46,11 +33,16 @@ async function handleInventory(message, args) {
                 .setTimestamp();
             return message.reply({ embeds: [emptyEmbed] });
         }
-        // Calculate Total Net Worth of items
-        const netWorth = items.reduce((sum, slot) => {
-            return sum + (slot.shopItem.price * slot.amount);
-        }, 0);
-        // Format the list
+        // 2. Net Worth
+        const netWorth = items.reduce((sum, slot) => sum + (slot.shopItem.price * slot.amount), 0);
+        // 3. Build Select Menu Options
+        // Limit to 25 items for Select Menu (Discord Limit)
+        const options = items.slice(0, 25).map(slot => ({
+            label: `${slot.shopItem.name} (x${slot.amount})`,
+            description: `Value: ${slot.shopItem.price} | Quick Sell: ${Math.floor(slot.shopItem.price * 0.5)}`,
+            value: slot.shopItem.id
+        }));
+        // 4. Build Embed
         const displayItems = items.slice(0, 15);
         const description = displayItems.map((slot, index) => {
             const item = slot.shopItem;
@@ -61,15 +53,24 @@ async function handleInventory(message, args) {
             .setTitle(`${eInv} ${targetUser.username}'s Inventory`)
             .setColor(discord_js_1.Colors.Blue)
             .setDescription(description)
-            // Moved "Total Value" to a Field for better visibility and emoji support reliability
             .addFields({
-            name: " Total Value",
+            name: "💰 Total Asset Value",
             value: (0, format_1.fmtCurrency)(netWorth, emoji),
             inline: false
         })
-            .setFooter({ text: items.length > 15 ? `...and ${items.length - 15} more items` : "Page 1" })
+            .setFooter({ text: "Select an item below to Sell, Trade, or List." })
             .setTimestamp();
-        return message.reply({ embeds: [embed] });
+        // 5. Components
+        const rows = [];
+        // Only show menu if it's the user's OWN inventory (can't manage others)
+        if (targetUser.id === message.author.id) {
+            const menu = new discord_js_1.StringSelectMenuBuilder()
+                .setCustomId("inv_select_item")
+                .setPlaceholder("Select an item to manage...")
+                .addOptions(options);
+            rows.push(new discord_js_1.ActionRowBuilder().addComponents(menu));
+        }
+        return message.reply({ embeds: [embed], components: rows });
     }
     catch (err) {
         console.error("Inventory Error:", err);

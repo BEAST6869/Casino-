@@ -2,6 +2,7 @@
 import { Message } from "discord.js";
 import prisma from "../../utils/prisma";
 import { successEmbed, errorEmbed } from "../../utils/embed";
+import { parseSmartAmount } from "../../utils/format";
 
 const SUPPORTED = ["work", "beg", "crime", "slut"];
 
@@ -20,15 +21,15 @@ export async function handleSetIncome(message: Message, args: string[]) {
         embeds: [errorEmbed(
           message.author,
           "Invalid Usage",
-          "Usage: `!setincome <work|beg|crime|slut> <min|max|cooldown|success|penalty> <value>`"
+          "Usage: `!setincome < work | beg | crime | slut > <min|max|cooldown|success|penalty> <value>`"
         )]
       });
     }
 
     // parse value
-    const val = Number(raw);
-    if (!Number.isFinite(val)) {
-      return message.reply({ embeds: [errorEmbed(message.author, "Invalid Value", "Value must be a number.")] });
+    const val = parseSmartAmount(raw);
+    if (isNaN(val)) {
+      return message.reply({ embeds: [errorEmbed(message.author, "Invalid Value", "Value must be a number (e.g. 50, 1k).")] });
     }
 
     // validation per field
@@ -70,7 +71,7 @@ export async function handleSetIncome(message: Message, args: string[]) {
     });
 
     return message.reply({
-      embeds: [successEmbed(message.author, "Income Config Updated", `**${commandKey}** updated: ${Object.entries(updates).map(([k,v]) => `${k}=${v}`).join(", ") || "no changes?"}`)]
+      embeds: [successEmbed(message.author, "Income Config Updated", `** ${commandKey}** updated: ${Object.entries(updates).map(([k, v]) => `${k}=${v}`).join(", ") || "no changes?"} `)]
     });
 
   } catch (err) {

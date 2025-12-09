@@ -35,7 +35,7 @@ export async function handleCredit(message: Message, args: string[]) {
             const dueTimestamp = Math.floor(loan.dueDate.getTime() / 1000);
 
             embed.addFields(
-                { name: `Loan #${i + 1}`, value: `**Due:** ${fmtCurrency(loan.totalRepayment, emoji)}\n**When:** <t:${dueTimestamp}:R> ${isOverdue ? "⚠️ **OVERDUE**" : ""}`, inline: true }
+                { name: `Loan #${i + 1}`, value: `**Principal:** ${fmtCurrency(loan.amount, emoji)}\n**Due:** ${fmtCurrency(loan.totalRepayment, emoji)}\n**When:** <t:${dueTimestamp}:R> ${isOverdue ? "⚠️ **OVERDUE**" : ""}`, inline: true }
             );
         });
     } else {

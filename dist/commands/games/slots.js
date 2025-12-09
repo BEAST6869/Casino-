@@ -7,6 +7,7 @@ const gameService_1 = require("../../services/gameService");
 const guildConfigService_1 = require("../../services/guildConfigService");
 const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
+const format_2 = require("../../utils/format");
 // Custom Emojis for Slots
 const CHERRY = "<:cherri:1446428169786622053>";
 const BANANA = "<:banano:1446428190837968989>";
@@ -43,6 +44,22 @@ async function handleSlots(message, args) {
         return message.reply({
             embeds: [(0, embed_1.errorEmbed)(message.author, "Bet Too Low", `The minimum bet is **${(0, format_1.fmtCurrency)(minBet, emoji)}**.`)]
         });
+    }
+    // Check Cooldown
+    const cooldowns = config.gameCooldowns || {};
+    const cdSeconds = cooldowns["slots"] || 0;
+    if (cdSeconds > 0) {
+        const { checkCooldown } = require("../../utils/cooldown"); // Inline import to avoid circular dependency if any, or just import at top.
+        // Actually, importing at top is better. I will add import in separate block if needed, but here simple usage.
+        // Using global/user specific key
+        const now = Date.now();
+        const key = `game:slots:${message.guildId}:${message.author.id}`;
+        const remaining = checkCooldown(key, cdSeconds);
+        if (remaining > 0) {
+            return message.reply({
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Cooldown Active", `⏳ Please wait **${(0, format_2.formatDuration)(remaining * 1000)}** before playing Slots again.`)]
+            });
+        }
     }
     const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
     if (user.wallet.balance < amount) {

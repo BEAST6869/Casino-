@@ -2,7 +2,7 @@ import { Message, EmbedBuilder, Colors } from "discord.js";
 import { ensureUserAndWallet } from "../../services/walletService";
 import { placeBetWithTransaction, placeBetFallback } from "../../services/gameService";
 import { getGuildConfig } from "../../services/guildConfigService";
-import { fmtCurrency } from "../../utils/format";
+import { fmtCurrency, parseBetAmount } from "../../utils/format";
 import { successEmbed, errorEmbed } from "../../utils/embed";
 import { checkCooldown } from "../../utils/cooldown";
 import { formatDuration } from "../../utils/format";
@@ -30,15 +30,14 @@ const MULTIPLIERS: Record<string, number> = {
 };
 
 export async function handleSlots(message: Message, args: string[]) {
-  const amountStr = args[0];
-  if (!amountStr) {
-    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!slots <amount>`")] });
+  const user = await ensureUserAndWallet(message.author.id, message.author.tag);
+  const bet = parseBetAmount(args[0], user.wallet!.balance);
+
+  if (isNaN(bet) || bet <= 0) {
+    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Bet", "Usage: `!slots <amount>`")] });
   }
 
-  const amount = parseInt(amountStr);
-  if (isNaN(amount) || amount <= 0) {
-    return message.reply({ embeds: [errorEmbed(message.author, "Invalid Wager", "Please bet a valid positive amount.")] });
-  }
+  const amount = bet;
 
   const config = await getGuildConfig(message.guildId!);
   const emoji = config.currencyEmoji;
@@ -70,7 +69,6 @@ export async function handleSlots(message: Message, args: string[]) {
     }
   }
 
-  const user = await ensureUserAndWallet(message.author.id, message.author.tag);
   if (user.wallet!.balance < amount) {
     return message.reply({ embeds: [errorEmbed(message.author, "Insufficient Funds", "You don't have enough money.")] });
   }
@@ -93,11 +91,14 @@ export async function handleSlots(message: Message, args: string[]) {
   }
 
   // Transaction
+  let actualPayout = payout;
   try {
-    await placeBetWithTransaction(user.id, user.wallet!.id, "slots", amount, "spin", win, payout);
+    actualPayout = await placeBetWithTransaction(user.id, user.wallet!.id, "slots", amount, "spin", win, payout, message.guildId!);
   } catch (e) {
-    await placeBetFallback(user.wallet!.id, user.id, "slots", amount, "spin", win, payout);
+    actualPayout = await placeBetFallback(user.wallet!.id, user.id, "slots", amount, "spin", win, payout, message.guildId!);
   }
+
+  payout = actualPayout;
 
   // Result Embed
   // Using the animated casino cash emoji for the title as requested

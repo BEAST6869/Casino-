@@ -129,6 +129,12 @@ client.on("interactionCreate", async (interaction: Interaction) => {
       return await handleInventoryInteraction(interaction as any);
     }
 
+    // 5. Ask Command Interactions
+    if (id.startsWith("ask_")) {
+      const { handleAskInteraction } = require("./handlers/askInteractionHandler");
+      return await handleAskInteraction(interaction);
+    }
+
   } catch (err) {
     console.error("Interaction error:", err);
     await safeInteractionReply(interaction, { content: "Internal error while processing interaction.", ephemeral: true });

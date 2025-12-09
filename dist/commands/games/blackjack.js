@@ -7,6 +7,8 @@ const gameService_1 = require("../../services/gameService");
 const guildConfigService_1 = require("../../services/guildConfigService");
 const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
+const cooldown_1 = require("../../utils/cooldown");
+const format_2 = require("../../utils/format");
 const SUITS = ["♠️", "♥️", "♦️", "♣️"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 // --- Helpers ---
@@ -68,6 +70,18 @@ async function handleBlackjack(message, args) {
         return message.reply({
             embeds: [(0, embed_1.errorEmbed)(message.author, "Bet Too Low", `The minimum bet is **${(0, format_1.fmtCurrency)(minBet, currencyEmoji)}**.`)]
         });
+    }
+    // Check Cooldown
+    const cooldowns = config.gameCooldowns || {};
+    const cdSeconds = cooldowns["bj"] || 0;
+    if (cdSeconds > 0) {
+        const key = `game:bj:${message.guildId}:${message.author.id}`;
+        const remaining = (0, cooldown_1.checkCooldown)(key, cdSeconds);
+        if (remaining > 0) {
+            return message.reply({
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Cooldown Active", `⏳ Please wait **${(0, format_2.formatDuration)(remaining * 1000)}** before playing Blackjack again.`)]
+            });
+        }
     }
     const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
     if (user.wallet.balance < amount) {

@@ -20,9 +20,14 @@ const shop_1 = require("./commands/economy/shop");
 const inventory_1 = require("./commands/economy/inventory");
 const profile_1 = require("./commands/economy/profile");
 const leaderboard_1 = require("./commands/economy/leaderboard");
+const bank_1 = require("./commands/economy/bank");
+const market_1 = require("./commands/economy/market");
 // admin
 const addMoney_1 = require("./commands/admin/addMoney");
+const setEconomyConfig_1 = require("./commands/admin/setEconomyConfig");
+const setRoleIncome_1 = require("./commands/admin/setRoleIncome");
 const removeMoney_1 = require("./commands/admin/removeMoney");
+const collect_1 = require("./commands/economy/collect");
 const setStartMoney_1 = require("./commands/admin/setStartMoney");
 const setIncomeCooldown_1 = require("./commands/admin/setIncomeCooldown");
 const resetEconomy_1 = require("./commands/admin/resetEconomy");
@@ -34,15 +39,18 @@ const manageShop_1 = require("./commands/admin/manageShop");
 const setTheme_1 = require("./commands/general/setTheme");
 const casinoBan_1 = require("./commands/admin/casinoBan");
 const casinoUnban_1 = require("./commands/admin/casinoUnban");
-const prisma_1 = __importDefault(require("./utils/prisma"));
-const embed_1 = require("./utils/embed");
+const casinoBanList_1 = require("./commands/admin/casinoBanList");
+const setGameCooldown_1 = require("./commands/admin/setGameCooldown");
+const setLogChannel_1 = require("./commands/admin/setLogChannel");
 // games
 const roulette_1 = require("./commands/games/roulette");
 const blackjack_1 = require("./commands/games/blackjack");
 const coinflip_1 = require("./commands/games/coinflip");
 const slots_1 = require("./commands/games/slots");
 const setMinBet_1 = require("./commands/admin/setMinBet");
-async function routeMessage(client, message) {
+const prisma_1 = __importDefault(require("./utils/prisma"));
+const embed_1 = require("./utils/embed");
+async function routeMessage(client, message, prefix) {
     const raw = message.content.slice(1).trim();
     const [cmd, ...args] = raw.split(/\s+/);
     const command = cmd.toLowerCase();
@@ -50,8 +58,6 @@ async function routeMessage(client, message) {
     if (message.author.id) {
         const user = await prisma_1.default.user.findUnique({ where: { discordId: message.author.id } });
         if (user?.isBanned) {
-            // Allow them to see help, or maybe nothing? Sticking to "nothing" or specific reject message.
-            // Let's explicitly reject.
             return message.reply({
                 embeds: [(0, embed_1.errorEmbed)(message.author, "Banned", "🚫 You are banned from the casino.")]
             });
@@ -83,8 +89,8 @@ async function routeMessage(client, message) {
         roulette: "bet",
         roul: "bet",
         cf: "coinflip",
-        bj: "blackjack", // <--- Alias
-        "21": "blackjack" // <--- Alias
+        bj: "blackjack",
+        "21": "blackjack"
     }[command] ?? command);
     switch (normalized) {
         case "addemoji":
@@ -106,12 +112,17 @@ async function routeMessage(client, message) {
         // ----------------
         case "balance":
             return (0, balance_1.handleBalance)(message);
+        case "bank":
+            return (0, bank_1.execute)(message, args);
         case "deposit":
             return (0, deposit_1.handleDeposit)(message, args);
         case "withdraw":
             return (0, withdrawBank_1.handleWithdrawBank)(message, args);
         case "transfer":
+        case "give":
             return (0, transfer_1.handleTransfer)(message, args);
+        case "collect":
+            return (0, collect_1.handleCollectRoleIncome)(message, args);
         // Income
         case "work":
         case "crime":
@@ -150,11 +161,11 @@ async function routeMessage(client, message) {
         // ----------------
         case "bet":
             return (0, roulette_1.handleBet)(message, args);
-        case "blackjack": // <--- Case
+        case "blackjack":
             return (0, blackjack_1.handleBlackjack)(message, args);
-        case "coinflip": // <--- Case
+        case "coinflip":
             return (0, coinflip_1.handleCoinflip)(message, args);
-        case "slots": // <--- Case
+        case "slots":
             return (0, slots_1.handleSlots)(message, args);
         // ----------------
         // Admin
@@ -169,7 +180,8 @@ async function routeMessage(client, message) {
         case "setstartmoney":
         case "setstart":
             return (0, setStartMoney_1.handleSetStartMoney)(message, args);
-        case "setincomecooldown":
+        case "set-income-cooldown":
+        case "set-income-cd":
             return (0, setIncomeCooldown_1.handleSetIncomeCooldown)(message, args);
         case "reseteconomy":
             return (0, resetEconomy_1.handleResetEconomy)(message, args);
@@ -192,17 +204,77 @@ async function routeMessage(client, message) {
             return (0, manageShop_1.handleManageShop)(message, args);
         case "set-theme":
             return (0, setTheme_1.handleSetTheme)(message, args);
-        case "casinoban":
+        case "casino-ban":
         case "banuser":
             return (0, casinoBan_1.handleCasinoBan)(message, args);
-        case "casinounban":
+        case "casino-unban":
         case "unbanuser":
             return (0, casinoUnban_1.handleCasinoUnban)(message, args);
+        case "casino-ban-list":
+        case "banlist":
+            return (0, casinoBanList_1.handleCasinoBanList)(message, args);
+        case "bm":
+        case "black-market":
+            return (0, market_1.execute)(message, args);
+        // Economy Configs
+        case "set-loan-interest":
+        case "setloan":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "loan");
+        case "set-fd-interest":
+        case "setfd":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "fd");
+        case "set-rd-interest":
+        case "setrd":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "rd");
+        case "set-tax":
+        case "settax":
+        case "market-tax":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "tax");
+        case "set-credit-reward":
+        case "set-reward":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "credit-reward");
+        case "set-credit-penalty":
+        case "set-penalty":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "credit-penalty");
+        case "set-credit-cap":
+        case "credit-cap":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "credit-cap");
+        case "set-max-loans":
+        case "max-loans":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "max-loans");
+        case "view-credit-tiers":
+        case "view-credit-config":
+            const { handleViewCreditTiers } = require("./commands/admin/manageCreditConfig");
+            return handleViewCreditTiers(message);
+        case "delete-credit-tier":
+        case "del-credit-tier":
+            const { handleDeleteCreditTier } = require("./commands/admin/manageCreditConfig");
+            return handleDeleteCreditTier(message, args);
+        case "set-credit-score":
+        case "set-score":
+            const { handleSetCreditScore } = require("./commands/admin/manageCreditScore");
+            return handleSetCreditScore(message, args);
+        case "set-credit-config":
+        case "credit-config":
+            const { handleSetCreditConfig } = require("./commands/admin/setCreditConfig");
+            return handleSetCreditConfig(message, args);
+        case "credit":
+        case "score":
+        case "cscore":
+            const { handleCredit } = require("./commands/economy/credit");
+            return handleCredit(message, args);
+        case "set-role-income":
+            return (0, setRoleIncome_1.handleSetRoleIncome)(message, args);
+        case "set-game-cooldown":
+        case "game-cd":
+            return (0, setGameCooldown_1.handleSetGameCooldown)(message, args);
+        case "set-log-channel":
+            return (0, setLogChannel_1.handleSetLogChannel)(message, args);
         // ----------------
         // Fallback
         // ----------------
         default:
-            return message.reply("Unknown command. Try: `!bal`, `!shop`, `!inv`, `!help`.");
+            return message.reply(`Unknown command. Try: \`${prefix}bal\`, \`${prefix}shop\`, \`${prefix}inv\`, \`${prefix}help\`.`);
     }
 }
 //# sourceMappingURL=commandRouter.js.map
