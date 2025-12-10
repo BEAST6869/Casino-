@@ -116,6 +116,11 @@ client.on("interactionCreate", async (interaction) => {
         if (id.startsWith("inv_")) {
             return await (0, inventoryInteractionHandler_1.handleInventoryInteraction)(interaction);
         }
+        // 5. Ask Command Interactions
+        if (id.startsWith("ask_")) {
+            const { handleAskInteraction } = require("./handlers/askInteractionHandler");
+            return await handleAskInteraction(interaction);
+        }
     }
     catch (err) {
         console.error("Interaction error:", err);

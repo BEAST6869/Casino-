@@ -8,7 +8,9 @@ exports.getWalletByDiscord = getWalletByDiscord;
 exports.getWalletById = getWalletById;
 exports.depositToWallet = depositToWallet;
 exports.removeMoneyFromWallet = removeMoneyFromWallet;
+exports.transferMoney = transferMoney;
 const prisma_1 = __importDefault(require("../utils/prisma"));
+const guildConfigService_1 = require("./guildConfigService");
 // User Cache: Stores which Discord IDs we have already verified exist
 const userIdCache = new Map();
 /** ensure user exists (by discordId) and wallet exists */
@@ -48,7 +50,16 @@ async function getWalletById(walletId) {
     return prisma_1.default.wallet.findUnique({ where: { id: walletId } });
 }
 /** Admin deposit to wallet */
-async function depositToWallet(walletId, amount, meta = {}, earned = false) {
+async function depositToWallet(walletId, amount, meta = {}, earned = false, guildId) {
+    if (guildId) {
+        const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
+        if (config.walletLimit) {
+            const wallet = await prisma_1.default.wallet.findUnique({ where: { id: walletId } });
+            if (wallet && wallet.balance + amount > config.walletLimit) {
+                throw new Error(`Wallet limit of ${config.walletLimit} reached.`);
+            }
+        }
+    }
     await prisma_1.default.$transaction([
         prisma_1.default.transaction.create({ data: { walletId, amount, type: "deposit", meta, isEarned: earned } }),
         prisma_1.default.wallet.update({ where: { id: walletId }, data: { balance: { increment: amount } } })
@@ -74,5 +85,58 @@ async function removeMoneyFromWallet(walletId, amount) {
         })
     ]);
     return wallet.balance - amount;
+}
+/** Transfer money between users (Discord IDs) */
+async function transferMoney(fromDiscordId, toDiscordId, amount, guildId) {
+    if (amount <= 0)
+        throw new Error("Amount must be positive.");
+    if (fromDiscordId === toDiscordId)
+        throw new Error("Cannot transfer to self.");
+    // Ensure wallets
+    // Since we don't have usernames here easily, we rely on them existing or passing placeholders if needed. 
+    // Ideally ensureUser calls should happen before. 
+    // But for robustness:
+    const fromUser = await prisma_1.default.user.findUnique({ where: { discordId: fromDiscordId }, include: { wallet: true } });
+    if (!fromUser || !fromUser.wallet)
+        throw new Error("Sender has no wallet.");
+    // Check balance
+    if (fromUser.wallet.balance < amount)
+        throw new Error("Insufficient funds.");
+    const toUser = await ensureUserAndWallet(toDiscordId, "UnknownUser"); // Fallback username
+    // CHECK RECEIVER LIMIT
+    const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
+    if (config.walletLimit) {
+        if (toUser.wallet.balance + amount > config.walletLimit) {
+            throw new Error(`Recipient's wallet is full (Max: ${config.walletLimit}).`);
+        }
+    }
+    await prisma_1.default.$transaction([
+        // Deduct from Sender
+        prisma_1.default.wallet.update({
+            where: { id: fromUser.wallet.id },
+            data: { balance: { decrement: amount } }
+        }),
+        prisma_1.default.transaction.create({
+            data: {
+                walletId: fromUser.wallet.id,
+                amount: -amount,
+                type: "transfer_sent",
+                meta: { to: toDiscordId }
+            }
+        }),
+        // Add to Receiver
+        prisma_1.default.wallet.update({
+            where: { id: toUser.wallet.id },
+            data: { balance: { increment: amount } }
+        }),
+        prisma_1.default.transaction.create({
+            data: {
+                walletId: toUser.wallet.id,
+                amount: amount,
+                type: "transfer_recv",
+                meta: { from: fromDiscordId }
+            }
+        })
+    ]);
 }
 //# sourceMappingURL=walletService.js.map

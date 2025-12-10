@@ -7,6 +7,8 @@ exports.getIncomeConfigOrDefault = getIncomeConfigOrDefault;
 exports.runIncomeCommand = runIncomeCommand;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const cooldown_1 = require("../utils/cooldown");
+const guildConfigService_1 = require("./guildConfigService");
+const walletService_1 = require("./walletService");
 function rand(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -61,6 +63,16 @@ async function runIncomeCommand({ commandKey, discordId, guildId, userId, wallet
             })
         ]);
         return { success: false, amount: -penalty, penalty, attempted: amount };
+    }
+    // CHECK WALLET LIMIT (Only on success/income)
+    if (guildId) {
+        const guildConfig = await (0, guildConfigService_1.getGuildConfig)(guildId);
+        if (guildConfig.walletLimit) {
+            const wallet = await (0, walletService_1.getWalletById)(walletId);
+            if (wallet && wallet.balance + amount > guildConfig.walletLimit) {
+                throw new Error(`Wallet limit of ${guildConfig.walletLimit} reached. Cannot earn more.`);
+            }
+        }
     }
     // success: award amount (mark as earned)
     await prisma_1.default.$transaction([

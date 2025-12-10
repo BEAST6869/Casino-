@@ -193,7 +193,7 @@ export async function handleBet(message: Message, args: string[]) {
       `**${didWin ? "Won" : "Lost"}:** ${fmtCurrency(didWin ? payout : amount, emoji)}`
     )
     // Footer shows only numeric balance (clean look)
-    .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet!.balance - amount) + payout}` });
+    .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet!.balance - amount + payout).toLocaleString()}` });
 
   return message.reply({ embeds: [resultEmbed] });
 }

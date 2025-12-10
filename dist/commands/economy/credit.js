@@ -28,7 +28,7 @@ async function handleCredit(message, args) {
         userSummary.activeLoans.forEach((loan, i) => {
             const isOverdue = new Date() > new Date(loan.dueDate);
             const dueTimestamp = Math.floor(loan.dueDate.getTime() / 1000);
-            embed.addFields({ name: `Loan #${i + 1}`, value: `**Due:** ${(0, format_1.fmtCurrency)(loan.totalRepayment, emoji)}\n**When:** <t:${dueTimestamp}:R> ${isOverdue ? "⚠️ **OVERDUE**" : ""}`, inline: true });
+            embed.addFields({ name: `Loan #${i + 1}`, value: `**Principal:** ${(0, format_1.fmtCurrency)(loan.amount, emoji)}\n**Due:** ${(0, format_1.fmtCurrency)(loan.totalRepayment, emoji)}\n**When:** <t:${dueTimestamp}:R> ${isOverdue ? "⚠️ **OVERDUE**" : ""}`, inline: true });
         });
     }
     else {

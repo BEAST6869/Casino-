@@ -13,29 +13,40 @@ async function handleDeposit(message, args) {
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const emoji = config.currencyEmoji;
     const wallet = user.wallet;
-    let amount = 0;
-    if (args[0]?.toLowerCase() === "all") {
-        amount = wallet.balance;
+    const amountStr = args[0];
+    if (!amountStr) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", "Usage: `!dep <amount/all>`")] });
     }
-    else {
-        amount = parseInt(args[0] || "0");
+    const amount = (0, format_1.parseSmartAmount)(amountStr, user.wallet.balance);
+    if (isNaN(amount) || amount <= 0) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", "Please enter a valid positive number.")] });
     }
-    if (!amount || amount <= 0)
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Error", "Invalid amount.")] });
     try {
-        await (0, bankService_1.depositToBank)(wallet.id, user.id, amount);
-        const bank = await (0, bankService_1.getBankByUserId)(user.id);
+        const { bank, actualAmount } = await (0, bankService_1.depositToBank)(wallet.id, user.id, amount, message.guildId);
+        // Refresh bank used to be handled by getBankByUserId but now we likely have updated bank or can fetch if needed, 
+        // but the return object 'bank' is the *pre-update* object + transaction updates it. 
+        // Actually Prisma update returns the new object. In bankService we returned 'bank' which was the *found* object, not the updated one.
+        // Wait, in my bankService update:
+        /*
+           prisma.bank.update(...) is inside transaction.
+           The function likely returns 'bank' which is the OLD object because we just did 'const bank = await ensureBank'.
+           We should probably fetch the new balance or just add actualAmount to the old balance for display.
+           Or better, let's fetch it freshly to be 100% sure.
+        */
+        const updatedBank = await (0, bankService_1.getBankByUserId)(user.id);
+        const isPartial = actualAmount < amount;
+        const partialMsg = isPartial ? ` (Partial Deposit - Bank Limit Reached)` : "";
         // Log Deposit
         await (0, discordLogger_1.logToChannel)(message.client, {
             guild: message.guild,
             type: "ECONOMY",
             title: "Bank Deposit",
-            description: `**User:** ${message.author.tag}\n**Amount:** ${(0, format_1.fmtCurrency)(amount, emoji)}\n**New Balance:** ${(0, format_1.fmtCurrency)(bank?.balance ?? 0, emoji)}`,
+            description: `**User:** ${message.author.tag}\n**Amount:** ${(0, format_1.fmtCurrency)(actualAmount, emoji)}${partialMsg}\n**New Balance:** ${(0, format_1.fmtCurrency)(updatedBank?.balance ?? 0, emoji)}`,
             color: 0x00AAFF
         });
         return message.reply({
             embeds: [
-                (0, embed_1.successEmbed)(message.author, "Deposit Successful", `Deposited **${(0, format_1.fmtCurrency)(amount, emoji)}**.\nBank: **${(0, format_1.fmtCurrency)(bank?.balance ?? 0, emoji)}**`)
+                (0, embed_1.successEmbed)(message.author, isPartial ? "Partial Deposit" : "Deposit Successful", `Deposited **${(0, format_1.fmtCurrency)(actualAmount, emoji)}**${partialMsg}.\nBank: **${(0, format_1.fmtCurrency)(updatedBank?.balance ?? 0, emoji)}**`)
             ]
         });
     }

@@ -14,16 +14,14 @@ async function handleWithdrawBank(message, args) {
     const emoji = config.currencyEmoji;
     if (!bank)
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Bank Account", "You do not have a bank account.")] });
-    // ... (args parsing logic) ...
-    let amount = 0;
-    if (args[0] && args[0].toLowerCase() === "all") {
-        amount = bank.balance;
-    }
-    else {
-        amount = parseInt(args[0] || "0");
-    }
-    if (!amount || amount <= 0)
+    const amountStr = args[0];
+    if (!amountStr) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", "Usage: `!withdraw <amount | all>`")] });
+    }
+    const amount = (0, format_1.parseSmartAmount)(amountStr, bank.balance);
+    if (isNaN(amount) || amount <= 0) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", "Please enter a valid positive number.")] });
+    }
     try {
         await (0, bankService_1.withdrawFromBank)(user.wallet.id, user.id, amount);
         const updated = await (0, bankService_1.getBankByUserId)(user.id);

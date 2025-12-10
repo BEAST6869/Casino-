@@ -12,7 +12,7 @@ export async function handleSetEconomyConfig(message: Message, args: string[], t
     }
 
     const valueStr = args[0];
-    const value = parseInt(valueStr);
+    const value = parseSmartAmount(valueStr); // Supports 1k, 1m, etc.
 
     if (isNaN(value) || value < 0) {
         return message.reply({ embeds: [errorEmbed(message.author, "Invalid Value", "Please provide a valid positive number.")] });

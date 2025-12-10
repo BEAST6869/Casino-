@@ -1,7 +1,7 @@
 import { Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { getGuildConfig } from "../../services/guildConfigService";
 import { errorEmbed } from "../../utils/embed";
-import { fmtCurrency } from "../../utils/format";
+import { fmtCurrency, parseSmartAmount } from "../../utils/format";
 
 export async function handleAsk(message: Message, args: string[]) {
     if (!message.guild) return;
@@ -14,8 +14,8 @@ export async function handleAsk(message: Message, args: string[]) {
     }
 
     const targetUser = message.mentions.users.first();
-    const amountStr = args.find(a => !a.startsWith("<@") && !isNaN(parseInt(a)));
-    const amount = amountStr ? parseInt(amountStr) : 0;
+    const amountStr = args.find(a => !a.startsWith("<@") && !isNaN(parseSmartAmount(a)));
+    const amount = amountStr ? parseSmartAmount(amountStr) : 0;
 
     const reasonIndex = args.indexOf(amountStr || "") + 1;
     const reason = args.slice(reasonIndex).join(" ") || "No reason provided";

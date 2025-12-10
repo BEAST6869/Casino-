@@ -32,9 +32,17 @@ function errorEmbed(user, title, desc) {
     return baseEmbed(user).setColor(discord_js_1.Colors.Red).setTitle(title).setDescription(desc ?? "");
 }
 // UPDATED: Now accepts 'emoji' string
-function balanceEmbed(user, wallet, bank, emoji) {
+// UPDATED: Now accepts limits
+function balanceEmbed(user, wallet, bank, emoji, walletLimit, bankLimit) {
+    const formatField = (amount, limit) => {
+        const amtStr = (0, format_1.fmtCurrency)(amount, emoji);
+        if (limit) {
+            return `${amtStr} / ${(0, format_1.fmtCurrency)(limit, emoji)}`;
+        }
+        return amtStr;
+    };
     return baseEmbed(user)
         .setTitle(`${user.username}'s Balance`)
-        .addFields({ name: "Wallet", value: (0, format_1.fmtCurrency)(wallet, emoji), inline: true }, { name: "Bank", value: (0, format_1.fmtCurrency)(bank, emoji), inline: true });
+        .addFields({ name: "Wallet", value: formatField(wallet, walletLimit), inline: true }, { name: "Bank", value: formatField(bank, bankLimit), inline: true });
 }
 //# sourceMappingURL=embed.js.map

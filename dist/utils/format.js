@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseDurationToDays = exports.parseDuration = exports.formatDuration = exports.fmtAmount = exports.fmtCurrency = void 0;
+exports.parseBetAmount = exports.parseSmartAmount = exports.parseDurationToDays = exports.parseDuration = exports.formatDuration = exports.fmtAmount = exports.fmtCurrency = void 0;
 const fmtCurrency = (amount, emoji = "🪙") => {
     return `${emoji} ${amount.toLocaleString()}`;
 };
@@ -75,4 +75,43 @@ const parseDurationToDays = (input) => {
     return seconds / 86400;
 };
 exports.parseDurationToDays = parseDurationToDays;
+/**
+ * Parses a bet amount string.
+ * Supports: 'all', 'max', 'allin' -> maxBalance
+ * Suffixes: k (1e3), m (1e6), b (1e9)
+ * Scientific: 1e4 -> 10000
+ */
+/**
+ * Parses a string input for currency amount.
+ * Supports:
+ * - "all", "max", "allin" -> returns maxBalance
+ * - "k" suffix -> thousands (e.g. 5k = 5000)
+ * - "m" suffix -> millions (e.g. 1m = 1000000)
+ * - "b" suffix -> billions
+ * - Scientific notation (e.g. 1e4)
+ * - Plain numbers
+ */
+const parseSmartAmount = (input, maxBalance = Infinity) => {
+    if (!input)
+        return NaN;
+    const lower = input.toLowerCase();
+    if (["all", "max", "allin"].includes(lower)) {
+        return maxBalance;
+    }
+    // Handle suffixes
+    const suffixMultipliers = {
+        'k': 1e3,
+        'm': 1e6,
+        'b': 1e9
+    };
+    const suffix = lower[lower.length - 1];
+    if (suffixMultipliers[suffix]) {
+        const numPart = parseFloat(lower.slice(0, -1));
+        return Math.floor(numPart * suffixMultipliers[suffix]);
+    }
+    // Handle scientific notation or plain number
+    return Math.floor(parseFloat(lower));
+};
+exports.parseSmartAmount = parseSmartAmount;
+exports.parseBetAmount = exports.parseSmartAmount;
 //# sourceMappingURL=format.js.map

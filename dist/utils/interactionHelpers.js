@@ -47,6 +47,10 @@ async function safeInteractionReply(interaction, opts) {
         }
     }
     catch (err) {
+        if (err.code === 10062) {
+            // Unknown interaction - ignore, as it's too late to reply
+            return;
+        }
         console.error("safeInteractionReply failed:", err);
     }
 }

@@ -25,7 +25,6 @@ const market_1 = require("./commands/economy/market");
 // admin
 const addMoney_1 = require("./commands/admin/addMoney");
 const setEconomyConfig_1 = require("./commands/admin/setEconomyConfig");
-const setRoleIncome_1 = require("./commands/admin/setRoleIncome");
 const removeMoney_1 = require("./commands/admin/removeMoney");
 const collect_1 = require("./commands/economy/collect");
 const setStartMoney_1 = require("./commands/admin/setStartMoney");
@@ -40,8 +39,6 @@ const setTheme_1 = require("./commands/general/setTheme");
 const casinoBan_1 = require("./commands/admin/casinoBan");
 const casinoUnban_1 = require("./commands/admin/casinoUnban");
 const casinoBanList_1 = require("./commands/admin/casinoBanList");
-const setGameCooldown_1 = require("./commands/admin/setGameCooldown");
-const setLogChannel_1 = require("./commands/admin/setLogChannel");
 // games
 const roulette_1 = require("./commands/games/roulette");
 const blackjack_1 = require("./commands/games/blackjack");
@@ -50,6 +47,7 @@ const slots_1 = require("./commands/games/slots");
 const setMinBet_1 = require("./commands/admin/setMinBet");
 const prisma_1 = __importDefault(require("./utils/prisma"));
 const embed_1 = require("./utils/embed");
+const stringUtils_1 = require("./utils/stringUtils");
 async function routeMessage(client, message, prefix) {
     const raw = message.content.slice(1).trim();
     const [cmd, ...args] = raw.split(/\s+/);
@@ -74,11 +72,11 @@ async function routeMessage(client, message, prefix) {
         b: "balance",
         with: "withdraw",
         wd: "withdraw",
-        add: "addmoney",
-        adminadd: "addmoney",
-        remove: "removemoney",
-        take: "removemoney",
-        "setstart": "setstartmoney",
+        add: "add-money",
+        adminadd: "add-money",
+        remove: "remove-money",
+        take: "remove-money",
+        "setstart": "set-start-money",
         inv: "inventory",
         lb: "leaderboard",
         top: "leaderboard",
@@ -102,8 +100,9 @@ async function routeMessage(client, message, prefix) {
         case "setprefix":
             return (0, setPrefix_1.handleSetPrefix)(message, args);
         case "setrob":
-        case "configrob":
-            return (0, setRob_1.handleSetRob)(message, args);
+        case "set-rob":
+            await (0, setRob_1.handleSetRobConfig)(message, args);
+            break;
         case "setcurrencyemoji":
         case "setemoji":
             return (0, setCurrencyEmoji_1.handleSetCurrencyEmoji)(message, args);
@@ -170,64 +169,67 @@ async function routeMessage(client, message, prefix) {
         // ----------------
         // Admin
         // ----------------
-        case "addmoney":
-        case "adminadd":
+        case "add-money":
+        case "admin-add":
             return (0, addMoney_1.handleAddMoney)(message, args);
-        case "removemoney":
+        case "remove-money":
         case "remove":
-        case "takemoney":
+        case "take-money":
             return (0, removeMoney_1.handleRemoveMoney)(message, args);
-        case "setstartmoney":
-        case "setstart":
+        case "set-start-money":
+        case "set-start":
             return (0, setStartMoney_1.handleSetStartMoney)(message, args);
         case "set-income-cooldown":
         case "set-income-cd":
             return (0, setIncomeCooldown_1.handleSetIncomeCooldown)(message, args);
-        case "reseteconomy":
+        case "reset-economy":
             return (0, resetEconomy_1.handleResetEconomy)(message, args);
-        case "setcurrency":
+        case "set-currency":
             return (0, setCurrency_1.handleSetCurrency)(message, args);
         case "min-bet":
             return (0, setMinBet_1.handleSetMinBet)(message, args);
-        case "adminviewconfig":
-        case "viewconfig":
+        case "admin-view-config":
+        case "view-config":
             return (0, viewConfig_1.handleAdminViewConfig)(message, args);
         // Shop Management
-        case "shopadd":
-        case "addshopitem":
+        case "shop-add":
+        case "add-shop-item":
             return (0, addShopItem_1.handleAddShopItem)(message, args);
-        case "manageitem":
-        case "edititem":
-        case "delitem":
-        case "editshop":
-        case "deleteshop":
+        case "manage-item":
+        case "edit-item":
+        case "del-item":
+        case "edit-shop":
+        case "delete-shop":
             return (0, manageShop_1.handleManageShop)(message, args);
         case "set-theme":
             return (0, setTheme_1.handleSetTheme)(message, args);
         case "casino-ban":
-        case "banuser":
+        case "ban-user":
             return (0, casinoBan_1.handleCasinoBan)(message, args);
         case "casino-unban":
-        case "unbanuser":
+        case "unban-user":
             return (0, casinoUnban_1.handleCasinoUnban)(message, args);
         case "casino-ban-list":
-        case "banlist":
+        case "ban-list":
             return (0, casinoBanList_1.handleCasinoBanList)(message, args);
         case "bm":
         case "black-market":
             return (0, market_1.execute)(message, args);
         // Economy Configs
         case "set-loan-interest":
-        case "setloan":
+        case "set-loan":
             return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "loan");
+        case "set-bank-limit":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "bank-limit");
+        case "set-wallet-limit":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "wallet-limit");
         case "set-fd-interest":
-        case "setfd":
+        case "set-fd":
             return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "fd");
         case "set-rd-interest":
-        case "setrd":
+        case "set-rd":
             return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "rd");
         case "set-tax":
-        case "settax":
         case "market-tax":
             return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "tax");
         case "set-credit-reward":
@@ -239,9 +241,27 @@ async function routeMessage(client, message, prefix) {
         case "set-credit-cap":
         case "credit-cap":
             return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "credit-cap");
+        case "set-min-credit-cap":
+        case "min-credit-cap":
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "min-credit-cap");
         case "set-max-loans":
         case "max-loans":
             return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "max-loans");
+        case "credit":
+        case "score":
+            const { handleCredit } = require("./commands/economy/credit");
+            return handleCredit(message, args);
+        case "set-credit-score":
+            const { handleSetCreditScore } = require("./commands/admin/manageCreditScore");
+            return handleSetCreditScore(message, args);
+        case "add-credit-tier":
+            const { handleAddCreditTier } = require("./commands/admin/addCreditTier");
+            return handleAddCreditTier(message, args);
+        case "config-credit-tier":
+        case "config-credit":
+        case "edit-credit-tier":
+            const { handleConfigCreditTier } = require("./commands/admin/configCreditTier");
+            return handleConfigCreditTier(message, args);
         case "view-credit-tiers":
         case "view-credit-config":
             const { handleViewCreditTiers } = require("./commands/admin/manageCreditConfig");
@@ -250,30 +270,43 @@ async function routeMessage(client, message, prefix) {
         case "del-credit-tier":
             const { handleDeleteCreditTier } = require("./commands/admin/manageCreditConfig");
             return handleDeleteCreditTier(message, args);
-        case "set-credit-score":
-        case "set-score":
-            const { handleSetCreditScore } = require("./commands/admin/manageCreditScore");
-            return handleSetCreditScore(message, args);
-        case "set-credit-config":
-        case "credit-config":
-            const { handleSetCreditConfig } = require("./commands/admin/setCreditConfig");
-            return handleSetCreditConfig(message, args);
-        case "credit":
-        case "score":
-        case "cscore":
-            const { handleCredit } = require("./commands/economy/credit");
-            return handleCredit(message, args);
-        case "set-role-income":
-            return (0, setRoleIncome_1.handleSetRoleIncome)(message, args);
-        case "set-game-cooldown":
-        case "game-cd":
-            return (0, setGameCooldown_1.handleSetGameCooldown)(message, args);
-        case "set-log-channel":
-            return (0, setLogChannel_1.handleSetLogChannel)(message, args);
+        case "ask-money":
+            const { handleAsk } = require("./commands/economy/ask");
+            return handleAsk(message, args);
+        case "toggle-ask-money":
+            // Map "off" / "disable" -> "0", everything else "1" (enable)
+            let val = "1";
+            if (args[0]?.toLowerCase() === "off" || args[0]?.toLowerCase() === "disable")
+                val = "0";
+            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, [val], "toggle-ask");
         // ----------------
         // Fallback
         // ----------------
+        // ----------------
+        // Fallback & Suggestions
+        // ----------------
         default:
+            // Valid Commands List for Suggestions
+            const VALID_COMMANDS = [
+                "balance", "bank", "deposit", "withdraw", "transfer", "collect",
+                "work", "crime", "beg", "slut", "rob", "shop", "inventory", "profile",
+                "leaderboard", "rank", "bet", "blackjack", "coinflip", "slots",
+                "add-money", "remove-money", "set-start-money", "reset-economy", "set-currency",
+                "min-bet", "viewconfig", "shopadd", "manageitem", "set-theme",
+                "casino-ban", "casino-unban", "banlist", "black-market",
+                "set-loan-interest", "set-fd-interest", "set-rd-interest", "set-tax",
+                "set-credit-reward", "set-credit-penalty", "set-credit-cap",
+                "set-min-credit-cap", "set-max-loans", "credit", "set-credit",
+                "add-credit-tier", "config-credit-tier", "view-credit-tiers", "delete-credit-tier",
+                "ask-money", "toggle-ask-money", "config-rob", "add-emoji", "set-income-cd", "set-prefix",
+                "set-currency-emoji"
+            ];
+            const bestMatch = (0, stringUtils_1.findBestMatch)(command, VALID_COMMANDS);
+            if (bestMatch) {
+                return message.reply({
+                    embeds: [(0, embed_1.errorEmbed)(message.author, "Unknown Command", `Did you mean \`${prefix}${bestMatch}\`?`)]
+                });
+            }
             return message.reply(`Unknown command. Try: \`${prefix}bal\`, \`${prefix}shop\`, \`${prefix}inv\`, \`${prefix}help\`.`);
     }
 }

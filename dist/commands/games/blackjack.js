@@ -43,14 +43,12 @@ function formatHand(hand, hideFirst = false) {
 }
 // --- Main Handler ---
 async function handleBlackjack(message, args) {
-    const amountStr = args[0];
-    if (!amountStr) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!bj <amount>`")] });
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    const bet = (0, format_1.parseBetAmount)(args[0], user.wallet.balance);
+    if (isNaN(bet) || bet <= 0) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Bet", "Please enter a valid amount (e.g., 500, 1k, all).")] });
     }
-    const amount = parseInt(amountStr);
-    if (isNaN(amount) || amount <= 0) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Wager", "Please bet a valid positive amount.")] });
-    }
+    const amount = bet;
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const minBet = config.minBet;
     // Use exact strings provided by user for consistent branding
@@ -83,7 +81,7 @@ async function handleBlackjack(message, args) {
             });
         }
     }
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    // Re-check funds before starting game loop
     if (user.wallet.balance < amount) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Insufficient Funds", "You don't have enough money.")] });
     }
@@ -136,7 +134,8 @@ async function handleBlackjack(message, args) {
     // If game over instantly
     if (gameOver) {
         try {
-            await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout);
+            const actualPayout = await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout, message.guildId);
+            payout = actualPayout;
         }
         catch (e) {
             return message.reply({ content: "Transaction failed." });
@@ -208,14 +207,17 @@ async function handleBlackjack(message, args) {
                     payout = currentBet;
                 }
             }
+            let actualPayout = payout;
             // Transaction
             try {
-                await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout);
+                actualPayout = await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout, message.guildId);
             }
             catch (e) {
                 await i.update({ content: `Transaction failed: ${e.message}`, components: [] });
                 return;
             }
+            // Update local payout variable for the embed
+            payout = actualPayout;
             await i.update({ embeds: [getEmbed(true)], components: [] });
         }
     });

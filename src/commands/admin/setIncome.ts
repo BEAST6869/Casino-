@@ -2,7 +2,8 @@
 import { Message } from "discord.js";
 import prisma from "../../utils/prisma";
 import { successEmbed, errorEmbed } from "../../utils/embed";
-import { parseSmartAmount } from "../../utils/format";
+import { parseSmartAmount, fmtCurrency } from "../../utils/format";
+import { getGuildConfig } from "../../services/guildConfigService";
 
 const SUPPORTED = ["work", "beg", "crime", "slut"];
 
@@ -70,8 +71,16 @@ export async function handleSetIncome(message: Message, args: string[]) {
       update: updates
     });
 
+    const config = await getGuildConfig(guildId);
+    const emoji = config.currencyEmoji;
+
+    const formattedUpdates = Object.entries(updates).map(([k, v]) => {
+      if (k === "minPay" || k === "maxPay") return `${k}=${fmtCurrency(v as number, emoji)}`;
+      return `${k}=${v}`;
+    }).join(", ");
+
     return message.reply({
-      embeds: [successEmbed(message.author, "Income Config Updated", `** ${commandKey}** updated: ${Object.entries(updates).map(([k, v]) => `${k}=${v}`).join(", ") || "no changes?"} `)]
+      embeds: [successEmbed(message.author, "Income Config Updated", `**${commandKey}** updated: ${formattedUpdates || "no changes?"}`)]
     });
 
   } catch (err) {

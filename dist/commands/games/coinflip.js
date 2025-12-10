@@ -20,8 +20,9 @@ async function handleCoinflip(message, args) {
             ],
         });
     }
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    const amount = (0, format_1.parseBetAmount)(amountStr, user.wallet.balance);
     // 2. Validate Amount
-    const amount = parseInt(amountStr, 10);
     if (isNaN(amount) || amount <= 0) {
         return message.reply({
             embeds: [
@@ -57,7 +58,12 @@ async function handleCoinflip(message, args) {
             });
         }
     }
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    // Refetch to be safe? Or just use existing.
+    // const user = await ensureUserAndWallet... -> We already have user.
+    // If we really need to refetch:
+    // user = await ... (but user is const)
+    // Let's assume user from line 27 is fine or define a new variable if logic demanded refresh.
+    // Given standard logic, just using 'user' is fine.
     if (!user.wallet || user.wallet.balance < amount) {
         return message.reply({
             embeds: [
@@ -69,14 +75,17 @@ async function handleCoinflip(message, args) {
     const isHeads = Math.random() < 0.5;
     const result = isHeads ? "heads" : "tails";
     const didWin = choice === result;
-    const payout = didWin ? amount * 2 : 0;
+    let payout = didWin ? amount * 2 : 0;
     // 6. Database Transaction
+    let actualPayout = payout;
     try {
-        await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "coinflip", amount, choice, didWin, payout);
+        actualPayout = await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "coinflip", amount, choice, didWin, payout, message.guildId);
     }
     catch (e) {
-        await (0, gameService_1.placeBetFallback)(user.wallet.id, user.id, "coinflip", amount, choice, didWin, payout);
+        actualPayout = await (0, gameService_1.placeBetFallback)(user.wallet.id, user.id, "coinflip", amount, choice, didWin, payout, message.guildId);
     }
+    // Use actual payout for display
+    payout = actualPayout;
     // Final wallet balance after this bet
     const finalWalletBalance = user.wallet.balance - amount + payout;
     const finalWalletBalanceIntl = finalWalletBalance.toLocaleString("en-US");

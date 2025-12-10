@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSetIncome = handleSetIncome;
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
+const format_1 = require("../../utils/format");
 const SUPPORTED = ["work", "beg", "crime", "slut"];
 async function handleSetIncome(message, args) {
     try {
@@ -17,13 +18,13 @@ async function handleSetIncome(message, args) {
         const raw = args[2];
         if (!cmd || !field || raw === undefined || !SUPPORTED.includes(cmd)) {
             return message.reply({
-                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setincome <work|beg|crime|slut> <min|max|cooldown|success|penalty> <value>`")]
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setincome < work | beg | crime | slut > <min|max|cooldown|success|penalty> <value>`")]
             });
         }
         // parse value
-        const val = Number(raw);
-        if (!Number.isFinite(val)) {
-            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Value", "Value must be a number.")] });
+        const val = (0, format_1.parseSmartAmount)(raw);
+        if (isNaN(val)) {
+            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Value", "Value must be a number (e.g. 50, 1k).")] });
         }
         // validation per field
         const updates = {};
@@ -71,7 +72,7 @@ async function handleSetIncome(message, args) {
             update: updates
         });
         return message.reply({
-            embeds: [(0, embed_1.successEmbed)(message.author, "Income Config Updated", `**${commandKey}** updated: ${Object.entries(updates).map(([k, v]) => `${k}=${v}`).join(", ") || "no changes?"}`)]
+            embeds: [(0, embed_1.successEmbed)(message.author, "Income Config Updated", `** ${commandKey}** updated: ${Object.entries(updates).map(([k, v]) => `${k}=${v}`).join(", ") || "no changes?"} `)]
         });
     }
     catch (err) {

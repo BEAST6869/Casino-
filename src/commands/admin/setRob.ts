@@ -2,7 +2,7 @@
 import { Message } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../../services/guildConfigService";
 import { successEmbed, errorEmbed, infoEmbed } from "../../utils/embed";
-import { parseDuration, formatDuration, parseSmartAmount } from "../../utils/format"; // Import parseSmartAmount
+import { parseDuration, formatDuration, parseSmartAmount, fmtCurrency } from "../../utils/format"; // Import parseSmartAmount
 
 export async function handleSetRobConfig(message: Message, args: string[]) { // Renamed function
   if (!message.member?.permissions.has("Administrator")) {
@@ -34,24 +34,27 @@ export async function handleSetRobConfig(message: Message, args: string[]) { // 
     if (!valStr) return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!setrob fine <amount>`")] });
     const val = parseSmartAmount(valStr);
     if (isNaN(val) || val < 0) return message.reply("Invalid fine amount.");
+    const config = await getGuildConfig(message.guild!.id);
     await updateGuildConfig(message.guild!.id, { robberyFine: val });
-    return message.reply({ embeds: [successEmbed(message.author, "Robbery Fine Updated", `Fine set to ** ${val}**.`)] });
+    return message.reply({ embeds: [successEmbed(message.author, "Robbery Fine Updated", `Fine set to **${fmtCurrency(val, config.currencyEmoji)}**.`)] });
   }
 
   if (sub === "min") {
     if (!valStr) return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!setrob min <amount>`")] });
     const val = parseSmartAmount(valStr);
     if (isNaN(val) || val < 0) return message.reply("Invalid amount.");
+    const config = await getGuildConfig(message.guild!.id);
     await updateGuildConfig(message.guild!.id, { minRobAmount: val });
-    return message.reply({ embeds: [successEmbed(message.author, "Min Rob Updated", `Min rob amount set to ** ${val}**.`)] });
+    return message.reply({ embeds: [successEmbed(message.author, "Min Rob Updated", `Min rob amount set to **${fmtCurrency(val, config.currencyEmoji)}**.`)] });
   }
 
   if (sub === "max") {
     if (!valStr) return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!setrob max <amount>`")] });
     const val = parseSmartAmount(valStr);
     if (isNaN(val) || val < 0) return message.reply("Invalid amount.");
+    const config = await getGuildConfig(message.guild!.id);
     await updateGuildConfig(message.guild!.id, { maxRobAmount: val });
-    return message.reply({ embeds: [successEmbed(message.author, "Max Rob Updated", `Max rob amount set to ** ${val}**.`)] });
+    return message.reply({ embeds: [successEmbed(message.author, "Max Rob Updated", `Max rob amount set to **${fmtCurrency(val, config.currencyEmoji)}**.`)] });
   }
 
   if (sub === "chance") {

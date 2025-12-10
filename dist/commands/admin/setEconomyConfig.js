@@ -54,6 +54,11 @@ async function handleSetEconomyConfig(message, args, type) {
             name = "Max Credit Score Cap";
             suffix = " pts";
             break;
+        case "min-credit-cap":
+            field = "minCreditScore";
+            name = "Min Credit Score Cap";
+            suffix = " pts";
+            break;
         case "max-loans":
             if (value < 1)
                 return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Limit", "Max active loans must be at least 1.")] });
@@ -61,6 +66,31 @@ async function handleSetEconomyConfig(message, args, type) {
             name = "Max Active Loans";
             suffix = "";
             break;
+        case "bank-limit":
+            field = "bankLimit";
+            name = "Bank Capacity Limit";
+            suffix = "";
+            break;
+        case "wallet-limit":
+            field = "walletLimit";
+            name = "Wallet Capacity Limit";
+            suffix = "";
+            break;
+        case "toggle-ask":
+            // Special handling for boolean toggle. 
+            // We interpret value > 0 as true, 0 as false? Or just toggle?
+            // User requested "enable/disable". args[0] might be "on"/"off".
+            // But this function expects an int parse at the top. 
+            // I should modify the top parsing or just accept 1/0.
+            // Let's stick to 1=Enabled, 0=Disabled for simplicity within this function structure.
+            field = "enableAskCommand";
+            name = "Ask Command Status";
+            suffix = value > 0 ? "Enabled" : "Disabled";
+            // We need to cast value to boolean for the DB update
+            await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { [field]: value > 0 });
+            return message.reply({
+                embeds: [(0, embed_1.successEmbed)(message.author, "Configuration Updated", `Successfully set **Ask Command** to **${value > 0 ? "Enabled" : "Disabled"}**.`)]
+            });
     }
     await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { [field]: value });
     return message.reply({

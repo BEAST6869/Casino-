@@ -10,11 +10,13 @@ async function handleDepositBank(message, args) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid", "Enter a valid amount.")] });
     const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
     try {
-        await (0, bankService_1.depositToBank)(user.wallet.id, user.id, amount);
-        const bank = await (0, bankService_1.getBankByUserId)(user.id);
+        const { actualAmount } = await (0, bankService_1.depositToBank)(user.wallet.id, user.id, amount, message.guildId);
+        const updatedBank = await (0, bankService_1.getBankByUserId)(user.id);
+        const isPartial = actualAmount < amount;
+        const partialInfo = isPartial ? ` (Partial - Limit Hit)` : "";
         return message.reply({
             embeds: [
-                (0, embed_1.successEmbed)(message.author, "Bank Deposit", `Deposited **${amount}**.\nBank Balance: **${bank?.balance}**`)
+                (0, embed_1.successEmbed)(message.author, isPartial ? "Partial Deposit" : "Bank Deposit", `Deposited **${actualAmount}**${partialInfo}.\nBank Balance: **${updatedBank?.balance}**`)
             ]
         });
     }

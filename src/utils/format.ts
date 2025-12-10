@@ -84,7 +84,7 @@ export const parseDurationToDays = (input: string): number | null => {
  */
 export const parseSmartAmount = (input: string, maxBalance: number = Infinity): number => {
   if (!input) return NaN;
-  const lower = input.toLowerCase();
+  const lower = input.toLowerCase().replace(/,/g, "");
 
   if (["all", "max", "allin"].includes(lower)) {
     return maxBalance;

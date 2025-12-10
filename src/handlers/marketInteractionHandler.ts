@@ -18,7 +18,7 @@ import { listItemOnMarket, buyItemFromMarket, getMarketListings, getUserListings
 import { getGuildConfig } from "../services/guildConfigService";
 import prisma from "../utils/prisma";
 import { logToChannel } from "../utils/discordLogger";
-import { fmtCurrency } from "../utils/format";
+import { fmtCurrency, parseSmartAmount } from "../utils/format";
 
 export async function handleMarketInteraction(interaction: Interaction) {
     if (interaction.isButton()) {
@@ -70,7 +70,7 @@ async function handleButton(interaction: ButtonInteraction) {
                 embed.setDescription("No items for sale right now.");
             } else {
                 const desc = listings.map(l =>
-                    `**ID:** \`${l.id}\`\n**Item:** ${l.shopItem.name} (x${l.amount})\n**Price:** ${config.currencyEmoji} ${l.totalPrice}\n**Seller:** <@${l.seller.discordId}>`
+                    `**ID:** \`${l.id}\`\n**Item:** ${l.shopItem.name} (x${l.amount})\n**Price:** ${fmtCurrency(l.totalPrice, config.currencyEmoji)}\n**Seller:** <@${l.seller.discordId}>`
                 ).join("\n\n");
                 embed.setDescription(desc);
             }
@@ -229,8 +229,8 @@ async function handleModal(interaction: ModalSubmitInteraction) {
     try {
         if (customId.startsWith("market_sell_modal_")) {
             const shopItemId = customId.split("_")[3];
-            const amount = parseInt(fields.getTextInputValue("sell_amount"));
-            const price = parseInt(fields.getTextInputValue("sell_price"));
+            const amount = parseSmartAmount(fields.getTextInputValue("sell_amount"));
+            const price = parseSmartAmount(fields.getTextInputValue("sell_price"));
 
             if (isNaN(amount) || isNaN(price)) throw new Error("Invalid numbers.");
 

@@ -114,7 +114,7 @@ export async function handleSlots(message: Message, args: string[]) {
         : `Better luck next time... You lost **${fmtCurrency(amount, emoji)}**.`)
     )
     // Footer shows only the numeric balance (clean look)
-    .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet!.balance - amount) + payout}` });
+    .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet!.balance - amount + payout).toLocaleString()}` });
 
   return message.reply({ embeds: [embed] });
 }

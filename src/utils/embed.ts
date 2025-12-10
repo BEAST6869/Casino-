@@ -43,7 +43,7 @@ export function balanceEmbed(user: User, wallet: number, bank: number, emoji: st
   };
 
   return baseEmbed(user)
-    .setTitle(`${user.username}'s Balance`)
+    .setTitle(`<:wallet:1445689199490633891> ${user.username}'s Balance`)
     .addFields(
       { name: "Wallet", value: formatField(wallet, walletLimit), inline: true },
       { name: "Bank", value: formatField(bank, bankLimit), inline: true }

@@ -3,15 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAddShopItem = handleAddShopItem;
 const shopService_1 = require("../../services/shopService");
 const embed_1 = require("../../utils/embed");
+const format_1 = require("../../utils/format");
 async function handleAddShopItem(message, args) {
     if (!message.member?.permissions.has("Administrator"))
         return;
     // Usage: !shopadd <price> <name>
     // Simplified for now because parsing "description" with spaces is hard in simple text cmds
-    const price = parseInt(args[0]);
-    const name = args.slice(1).join(" ");
-    if (!price || !name) {
-        return message.reply("Usage: `!shopadd <price> <item name>`");
+    const name = args[0];
+    const price = (0, format_1.parseSmartAmount)(args[1]);
+    if (!name || isNaN(price) || price <= 0) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!add-shop-item <name> <price> [desc] [stock] [roleID]`")] });
     }
     try {
         await (0, shopService_1.createShopItem)(message.guildId, name, price, "No description set.");

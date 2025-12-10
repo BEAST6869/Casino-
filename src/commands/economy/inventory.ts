@@ -3,7 +3,7 @@ import { Message, EmbedBuilder, Colors, ActionRowBuilder, StringSelectMenuBuilde
 import { getUserInventory } from "../../services/shopService";
 import { getGuildConfig } from "../../services/guildConfigService";
 import { ensureUserAndWallet } from "../../services/walletService";
-import { fmtCurrency } from "../../utils/format";
+import { fmtCurrency, fmtAmount } from "../../utils/format";
 import { errorEmbed } from "../../utils/embed";
 import { emojiInline } from "../../utils/emojiRegistry";
 
@@ -46,7 +46,7 @@ export async function handleInventory(message: Message, args: string[]) {
     // Limit to 25 items for Select Menu (Discord Limit)
     const options = items.slice(0, 25).map(slot => ({
       label: `${slot.shopItem.name} (x${slot.amount})`,
-      description: `Value: ${slot.shopItem.price} | Quick Sell: ${Math.floor(slot.shopItem.price * 0.5)}`,
+      description: `Value: ${fmtAmount(slot.shopItem.price)} | Quick Sell: ${fmtAmount(Math.floor(slot.shopItem.price * 0.5))}`,
       value: slot.shopItem.id
     }));
 

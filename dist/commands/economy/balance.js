@@ -24,7 +24,7 @@ async function handleBalance(message) {
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     return message.reply({
         embeds: [
-            (0, embed_1.balanceEmbed)(targetUser, user.wallet.balance, bank?.balance ?? 0, config.currencyEmoji)
+            (0, embed_1.balanceEmbed)(targetUser, user.wallet.balance, bank?.balance ?? 0, config.currencyEmoji, config.walletLimit, config.bankLimit)
         ]
     });
 }

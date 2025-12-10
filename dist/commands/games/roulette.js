@@ -67,12 +67,15 @@ async function handleRouletteMenu(message) {
 }
 // --- THE GAME LOGIC (!bet) ---
 async function handleBet(message, args) {
-    const amountStr = args[0];
-    const choiceRaw = (args[1] || "").toLowerCase();
-    if (!amountStr || !choiceRaw) {
-        return handleRouletteMenu(message);
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    let amount = (0, format_1.parseBetAmount)(args[0], user.wallet.balance);
+    let choiceRaw = (args[1] || "").toLowerCase();
+    // Support flipped args: !roulette red 100
+    if (isNaN(amount)) {
+        // Try parsing second arg as amount
+        amount = (0, format_1.parseBetAmount)(args[1], user.wallet.balance);
+        choiceRaw = (args[0] || "").toLowerCase();
     }
-    const amount = parseInt(amountStr);
     if (isNaN(amount) || amount <= 0) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Wager", "Please bet a valid positive amount.")] });
     }
@@ -97,7 +100,6 @@ async function handleBet(message, args) {
             });
         }
     }
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
     if (user.wallet.balance < amount) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Insufficient Funds", "You don't have enough money in your wallet.")] });
     }
@@ -135,13 +137,15 @@ async function handleBet(message, args) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Choice", "Bet on `red`, `black`, `odd`, `even`, or a number `0-36`.")] });
         }
     }
-    const payout = didWin ? Math.floor(amount * multiplier) : 0;
+    let payout = didWin ? Math.floor(amount * multiplier) : 0;
+    let actualPayout = payout;
     try {
-        await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "roulette_v1", amount, choiceRaw, didWin, payout);
+        actualPayout = await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "roulette_v1", amount, choiceRaw, didWin, payout, message.guildId);
     }
     catch (e) {
-        await (0, gameService_1.placeBetFallback)(user.wallet.id, user.id, "roulette_v1", amount, choiceRaw, didWin, payout);
+        actualPayout = await (0, gameService_1.placeBetFallback)(user.wallet.id, user.id, "roulette_v1", amount, choiceRaw, didWin, payout, message.guildId);
     }
+    payout = actualPayout;
     // Result Embed
     const eRedCoin = "<:redcoin:1446217599439343772>";
     const eBlackCoin = "<:BlackCoin:1446217613632999565>";
