@@ -23,7 +23,7 @@ This project provides a complete ecosystem for Discord servers looking to engage
 - **Coinflip**: Simple high-stakes betting.
 
 ### Administration & Permissions
-- **Hierarchical System**: Multilayered permissions (Admin > Bot Commander > User Permissions > Channel Overrides).
+- **Hierarchical System**: Multilayered permissions (Admin > User Permissions > Channel Overrides).
 - **Casino Channels**: Whitelist specific channels for bot interaction.
 - **Audit Logging**: Detailed logs for all administrative actions, bans, and configuration changes.
 - **Dynamic Configuration**: Configure interest rates, starting balances, and taxes directly from Discord.
@@ -77,7 +77,6 @@ CLIENT_ID="your_discord_client_id"
 - `!set casino channel add #channel` - Restrict bot to channels.
 - `!channel override enable <command>` - Enable commands in specific channels.
 - `!perms allow user @user <command>` - Grant specific command access.
-- `!bot commander set @user` - Grant elevated privileges.
 
 ## Development
 

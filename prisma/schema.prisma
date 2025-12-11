@@ -261,8 +261,7 @@ model GuildConfig {
 
   // Advanced Permissions
   casinoChannels    String[] @default([]) // Whitelisted channels
-  botCommanderRoles String[] @default([]) // Role IDs for Bot Commanders
-  botCommanderUsers String[] @default([]) // User IDs for Bot Commanders
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
