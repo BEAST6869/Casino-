@@ -157,7 +157,7 @@ async function handleBet(message, args) {
         `**Your Bet:** ${choiceRaw}\n` +
         `**${didWin ? "Won" : "Lost"}:** ${(0, format_1.fmtCurrency)(didWin ? payout : amount, emoji)}`)
         // Footer shows only numeric balance (clean look)
-        .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet.balance - amount) + payout}` });
+        .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet.balance - amount + payout).toLocaleString()}` });
     return message.reply({ embeds: [resultEmbed] });
 }
 //# sourceMappingURL=roulette.js.map

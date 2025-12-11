@@ -11,7 +11,10 @@ datasource db {
 
 model User {
   id          String @id @default(auto()) @map("_id") @db.ObjectId
-  discordId   String @unique
+  discordId   String
+  guildId     String
+  
+  @@unique([discordId, guildId]) // User is unique per Guild
   username    String
 
   wallet      Wallet?
@@ -37,6 +40,8 @@ model User {
   isBanned    Boolean  @default(false)
 
   loans       Loan[]
+  isLoanBanned Boolean @default(false)
+  isCasinoAdmin Boolean @default(false)
   investments Investment[]
   listings    MarketListing[]
 }
@@ -252,7 +257,12 @@ model GuildConfig {
   gameCooldowns    Json?    @default("{}") // e.g. {"slots": 30, "bj": 10}
 
   logChannelId     String?  // Channel ID for audit logs
-  enableAskCommand Boolean  @default(true)
+  disabledCommands String[] @default([])
+
+  // Advanced Permissions
+  casinoChannels    String[] @default([]) // Whitelisted channels
+  botCommanderRoles String[] @default([]) // Role IDs for Bot Commanders
+  botCommanderUsers String[] @default([]) // User IDs for Bot Commanders
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -275,4 +285,17 @@ model MarketListing {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model CommandPermission {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  guildId   String
+  command   String   // The command name or "ALL"
+  targetType String  // USER, ROLE, CHANNEL
+  targetId  String   // The Discord ID
+  action    String   // ALLOW, DENY
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, command, targetType, targetId]) // prevent duplicate rules
 }

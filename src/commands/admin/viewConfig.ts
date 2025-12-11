@@ -1,28 +1,1 @@
-// src/commands/admin/viewConfig.ts
-import { Message } from "discord.js";
-import { getGuildConfig } from "../../services/guildConfigService";
-import { infoEmbed, errorEmbed } from "../../utils/embed";
-
-export async function handleAdminViewConfig(message: Message, args: string[]) {
-  try {
-    if (!message.member?.permissions.has("Administrator")) {
-      return message.reply({ embeds: [errorEmbed(message.author, "No Permission", "Admins only.")] });
-    }
-
-    const cfg = await getGuildConfig(message.guildId!);
-
-    const desc = `
-**Currency:** ${cfg.currencyName}
-**Start Money:** ${cfg.startMoney}
-**Transfer Tax:** ${cfg.transferTax}%
-**Income Tax:** ${cfg.incomeTax}%
-**Bank Limit:** ${cfg.bankLimit}
-**Interest Rate (daily):** ${cfg.interestRate}%
-    `.trim();
-
-    return message.reply({ embeds: [infoEmbed(message.author, "Guild Economy Settings", desc)] });
-  } catch (err) {
-    console.error("handleAdminViewConfig error:", err);
-    return message.reply({ embeds: [errorEmbed(message.author, "Internal Error", "Failed to fetch config.")] });
-  }
-}
+import { Message } from "discord.js";import { getGuildConfig } from "../../services/guildConfigService";import { infoEmbed, errorEmbed } from "../../utils/embed";import { canExecuteAdminCommand } from "../../utils/permissionUtils";export async function handleAdminViewConfig(message: Message, args: string[]) {  try {    if (!message.member || !(await canExecuteAdminCommand(message, message.member))) {      return message.reply({ embeds: [errorEmbed(message.author, "No Permission", "Admins or Bot Commanders only.")] });    }    const cfg = await getGuildConfig(message.guildId!);    const desc = `**Currency:** ${cfg.currencyName}**Start Money:** ${cfg.startMoney}**Transfer Tax:** ${cfg.transferTax}%**Income Tax:** ${cfg.incomeTax}%**Bank Limit:** ${cfg.bankLimit}**Interest Rate (daily):** ${cfg.interestRate}%    `.trim();    return message.reply({ embeds: [infoEmbed(message.author, "Guild Economy Settings", desc)] });  } catch (err) {    console.error("handleAdminViewConfig error:", err);    return message.reply({ embeds: [errorEmbed(message.author, "Internal Error", "Failed to fetch config.")] });  }}

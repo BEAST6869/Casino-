@@ -96,7 +96,7 @@ async function handleSlots(message, args) {
             ? `**JACKPOT!** You won **${(0, format_1.fmtCurrency)(payout, emoji)}**! (x${multiplier})`
             : `Better luck next time... You lost **${(0, format_1.fmtCurrency)(amount, emoji)}**.`))
         // Footer shows only the numeric balance (clean look)
-        .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet.balance - amount) + payout}` });
+        .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet.balance - amount + payout).toLocaleString()}` });
     return message.reply({ embeds: [embed] });
 }
 //# sourceMappingURL=slots.js.map

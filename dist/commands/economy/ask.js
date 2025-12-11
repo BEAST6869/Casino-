@@ -15,8 +15,8 @@ async function handleAsk(message, args) {
         });
     }
     const targetUser = message.mentions.users.first();
-    const amountStr = args.find(a => !a.startsWith("<@") && !isNaN(parseInt(a)));
-    const amount = amountStr ? parseInt(amountStr) : 0;
+    const amountStr = args.find(a => !a.startsWith("<@") && !isNaN((0, format_1.parseSmartAmount)(a)));
+    const amount = amountStr ? (0, format_1.parseSmartAmount)(amountStr) : 0;
     const reasonIndex = args.indexOf(amountStr || "") + 1;
     const reason = args.slice(reasonIndex).join(" ") || "No reason provided";
     if (!targetUser || amount <= 0) {

@@ -16,7 +16,7 @@ async function handleAddShopItem(message, args) {
     }
     try {
         await (0, shopService_1.createShopItem)(message.guildId, name, price, "No description set.");
-        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Item Added", `Added **${name}** for **${price}**`)] });
+        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Item Added", `Added **${name}** for **${(0, format_1.fmtCurrency)(price)}**`)] });
     }
     catch (err) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Error", "Failed to create item.")] });

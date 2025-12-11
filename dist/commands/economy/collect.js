@@ -5,6 +5,7 @@ const roleIncomeService_1 = require("../../services/roleIncomeService");
 const bankService_1 = require("../../services/bankService");
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
+const format_1 = require("../../utils/format");
 const discordLogger_1 = require("../../utils/discordLogger");
 async function handleCollectRoleIncome(message, args) {
     if (!message.guild || !message.member)
@@ -20,17 +21,17 @@ async function handleCollectRoleIncome(message, args) {
         }
         const details = result.details.map(d => {
             const role = message.guild?.roles.cache.get(d.roleId);
-            return `• **${role?.name || "Unknown Role"}**: ${config.currencyEmoji} ${d.amount}`;
+            return `• **${role?.name || "Unknown Role"}**: ${(0, format_1.fmtCurrency)(d.amount, config.currencyEmoji)}`;
         }).join("\n");
         // Log Collection
         await (0, discordLogger_1.logToChannel)(message.client, {
             guild: message.guild,
             type: "ECONOMY",
             title: "Income Collected",
-            description: `**User:** ${message.author.tag}\n**Total:** ${config.currencyEmoji} ${result.totalClaimed}`,
+            description: `**User:** ${message.author.tag}\n**Total:** ${(0, format_1.fmtCurrency)(result.totalClaimed, config.currencyEmoji)}`,
             color: 0x00FF00
         });
-        const embed = (0, embed_1.successEmbed)(message.author, "Income Collected!", `You collected a total of **${config.currencyEmoji} ${result.totalClaimed}**!\n\n${details}`);
+        const embed = (0, embed_1.successEmbed)(message.author, "Income Collected!", `You collected a total of **${(0, format_1.fmtCurrency)(result.totalClaimed, config.currencyEmoji)}**!\n\n${details}`);
         return message.reply({ embeds: [embed] });
     }
     catch (err) {

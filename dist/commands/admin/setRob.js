@@ -31,8 +31,9 @@ async function handleSetRobConfig(message, args) {
         const val = (0, format_1.parseSmartAmount)(valStr);
         if (isNaN(val) || val < 0)
             return message.reply("Invalid fine amount.");
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
         await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { robberyFine: val });
-        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Robbery Fine Updated", `Fine set to ** ${val}**.`)] });
+        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Robbery Fine Updated", `Fine set to **${(0, format_1.fmtCurrency)(val, config.currencyEmoji)}**.`)] });
     }
     if (sub === "min") {
         if (!valStr)
@@ -40,8 +41,9 @@ async function handleSetRobConfig(message, args) {
         const val = (0, format_1.parseSmartAmount)(valStr);
         if (isNaN(val) || val < 0)
             return message.reply("Invalid amount.");
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
         await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { minRobAmount: val });
-        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Min Rob Updated", `Min rob amount set to ** ${val}**.`)] });
+        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Min Rob Updated", `Min rob amount set to **${(0, format_1.fmtCurrency)(val, config.currencyEmoji)}**.`)] });
     }
     if (sub === "max") {
         if (!valStr)
@@ -49,8 +51,9 @@ async function handleSetRobConfig(message, args) {
         const val = (0, format_1.parseSmartAmount)(valStr);
         if (isNaN(val) || val < 0)
             return message.reply("Invalid amount.");
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
         await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { maxRobAmount: val });
-        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Max Rob Updated", `Max rob amount set to ** ${val}**.`)] });
+        return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Max Rob Updated", `Max rob amount set to **${(0, format_1.fmtCurrency)(val, config.currencyEmoji)}**.`)] });
     }
     if (sub === "chance") {
         if (!valStr)

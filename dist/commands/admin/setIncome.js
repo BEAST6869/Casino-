@@ -7,6 +7,7 @@ exports.handleSetIncome = handleSetIncome;
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
+const guildConfigService_1 = require("../../services/guildConfigService");
 const SUPPORTED = ["work", "beg", "crime", "slut"];
 async function handleSetIncome(message, args) {
     try {
@@ -71,8 +72,15 @@ async function handleSetIncome(message, args) {
             },
             update: updates
         });
+        const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
+        const emoji = config.currencyEmoji;
+        const formattedUpdates = Object.entries(updates).map(([k, v]) => {
+            if (k === "minPay" || k === "maxPay")
+                return `${k}=${(0, format_1.fmtCurrency)(v, emoji)}`;
+            return `${k}=${v}`;
+        }).join(", ");
         return message.reply({
-            embeds: [(0, embed_1.successEmbed)(message.author, "Income Config Updated", `** ${commandKey}** updated: ${Object.entries(updates).map(([k, v]) => `${k}=${v}`).join(", ") || "no changes?"} `)]
+            embeds: [(0, embed_1.successEmbed)(message.author, "Income Config Updated", `**${commandKey}** updated: ${formattedUpdates || "no changes?"}`)]
         });
     }
     catch (err) {

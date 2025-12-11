@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSetEconomyConfig = handleSetEconomyConfig;
+const format_1 = require("../../utils/format");
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
 async function handleSetEconomyConfig(message, args, type) {
@@ -11,7 +12,7 @@ async function handleSetEconomyConfig(message, args, type) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Permission Denied", "You need Administrator permissions to use this command.")] });
     }
     const valueStr = args[0];
-    const value = parseInt(valueStr);
+    const value = (0, format_1.parseSmartAmount)(valueStr); // Supports 1k, 1m, etc.
     if (isNaN(value) || value < 0) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Value", "Please provide a valid positive number.")] });
     }

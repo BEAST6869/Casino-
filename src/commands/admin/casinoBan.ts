@@ -1,33 +1,1 @@
-import { Message } from "discord.js";
-import prisma from "../../utils/prisma";
-import { successEmbed, errorEmbed } from "../../utils/embed";
-
-export async function handleCasinoBan(message: Message, args: string[]) {
-    if (!message.member?.permissions.has("Administrator")) {
-        return message.reply({ embeds: [errorEmbed(message.author, "No Permission", "Administrator required.")] });
-    }
-
-    const mention = args[0];
-    const reason = args.slice(1).join(" ") || "No reason provided.";
-
-    if (!mention) {
-        return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!casinoban @user <reason>`")] });
-    }
-
-    const discordId = mention.replace(/[<@!>]/g, "");
-
-    try {
-        const user = await prisma.user.upsert({
-            where: { discordId },
-            create: { discordId, username: "Unknown", isBanned: true },
-            update: { isBanned: true }
-        });
-
-        return message.reply({
-            embeds: [successEmbed(message.author, "User Banned", `🚫 **<@${discordId}>** has been banned from the casino.\nReason: ${reason}`)]
-        });
-    } catch (error) {
-        console.error(error);
-        return message.reply({ embeds: [errorEmbed(message.author, "Error", "Failed to ban user.")] });
-    }
-}
+import { Message } from "discord.js";import prisma from "../../utils/prisma";import { successEmbed, errorEmbed } from "../../utils/embed";import { canExecuteAdminCommand } from "../../utils/permissionUtils";export async function handleCasinoBan(message: Message, args: string[]) {    if (!message.member || !(await canExecuteAdminCommand(message, message.member))) {        return message.reply({ embeds: [errorEmbed(message.author, "No Permission", "Administrator or Bot Commander required.")] });    }    const mention = args[0];    const reason = args.slice(1).join(" ") || "No reason provided.";    if (!mention) {        return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!casinoban @user <reason>`")] });    }    const discordId = mention.replace(/[<@!>]/g, "");    const targetMember = await message.guild?.members.fetch(discordId).catch(() => null);    const { getPermissionLevel, canActOn, PermissionLevel } = require("../../utils/permissions");    const actorLevel = await getPermissionLevel(message, message.member!);    if (actorLevel < PermissionLevel.ADMIN) {        return message.reply({ embeds: [errorEmbed(message.author, "Access Denied", "You need Administrator permissions.")] });    }    let targetLevel = PermissionLevel.MEMBER;    if (targetMember) {        targetLevel = await getPermissionLevel(message, targetMember);    } else {        const dbUser = await prisma.user.findUnique({ where: { discordId_guildId: { discordId, guildId: message.guildId! } } });        if (dbUser && (dbUser as any).isCasinoAdmin) targetLevel = PermissionLevel.CASINO_ADMIN;        if (discordId === message.guild?.ownerId) targetLevel = PermissionLevel.OWNER;        if (discordId === "1288340046449086567") targetLevel = PermissionLevel.BOT_OWNER;    }    if (!(await canActOn(actorLevel, targetLevel))) {        return message.reply({ embeds: [errorEmbed(message.author, "Access Denied", "You cannot ban this user due to privilege hierarchy.")] });    }    try {        const user = await prisma.user.upsert({            where: { discordId_guildId: { discordId, guildId: message.guildId! } },            create: { discordId, guildId: message.guildId!, username: "Unknown", isBanned: true },            update: { isBanned: true }        });        const { logToChannel } = require("../../utils/discordLogger");        await logToChannel(message.client, {            guild: message.guild!,            type: "MODERATION",            title: "User Banned",            description: `**User:** <@${discordId}>\n**Reason:** ${reason}\n**Banned By:** ${message.author.tag}`,            color: 0xFF0000        });        return message.reply({            embeds: [successEmbed(message.author, "User Banned", `🚫 **<@${discordId}>** has been banned from the casino.\nReason: ${reason}`)]        });    } catch (error) {        console.error(error);        return message.reply({ embeds: [errorEmbed(message.author, "Error", "Failed to ban user.")] });    }}

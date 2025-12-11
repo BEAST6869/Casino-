@@ -12,7 +12,7 @@ async function handleBalance(message) {
     if (!targetUser) {
         targetUser = message.author;
     }
-    // Prevent checking bots (optional, but good practice)
+    // Prevent checking bots 
     if (targetUser.bot) {
         return message.reply({
             embeds: [(0, embed_1.errorEmbed)(message.author, "Error", "Bots do not have wallets.")]

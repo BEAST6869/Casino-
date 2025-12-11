@@ -53,7 +53,7 @@ async function handleLeaderboard(message, args) {
         const desc = top10.map((u, i) => {
             let valStr = "";
             if (t === "level") {
-                valStr = `Level ${u.level} (${u.xp} XP)`;
+                valStr = `Level ${u.level} (${(0, format_1.fmtAmount)(u.xp)} XP)`;
             }
             else {
                 const val = (u.wallet?.balance ?? 0) + (t === "net" ? (u.bank?.balance ?? 0) : 0);

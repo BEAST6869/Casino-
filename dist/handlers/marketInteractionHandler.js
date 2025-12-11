@@ -49,7 +49,7 @@ async function handleButton(interaction) {
                 embed.setDescription("No items for sale right now.");
             }
             else {
-                const desc = listings.map(l => `**ID:** \`${l.id}\`\n**Item:** ${l.shopItem.name} (x${l.amount})\n**Price:** ${config.currencyEmoji} ${l.totalPrice}\n**Seller:** <@${l.seller.discordId}>`).join("\n\n");
+                const desc = listings.map(l => `**ID:** \`${l.id}\`\n**Item:** ${l.shopItem.name} (x${l.amount})\n**Price:** ${(0, format_1.fmtCurrency)(l.totalPrice, config.currencyEmoji)}\n**Seller:** <@${l.seller.discordId}>`).join("\n\n");
                 embed.setDescription(desc);
             }
             const row = new discord_js_1.ActionRowBuilder();
@@ -169,8 +169,8 @@ async function handleModal(interaction) {
     try {
         if (customId.startsWith("market_sell_modal_")) {
             const shopItemId = customId.split("_")[3];
-            const amount = parseInt(fields.getTextInputValue("sell_amount"));
-            const price = parseInt(fields.getTextInputValue("sell_price"));
+            const amount = (0, format_1.parseSmartAmount)(fields.getTextInputValue("sell_amount"));
+            const price = (0, format_1.parseSmartAmount)(fields.getTextInputValue("sell_price"));
             if (isNaN(amount) || isNaN(price))
                 throw new Error("Invalid numbers.");
             await (0, marketService_1.listItemOnMarket)(user.id, guildId, shopItemId, amount, price);

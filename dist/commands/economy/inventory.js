@@ -39,7 +39,7 @@ async function handleInventory(message, args) {
         // Limit to 25 items for Select Menu (Discord Limit)
         const options = items.slice(0, 25).map(slot => ({
             label: `${slot.shopItem.name} (x${slot.amount})`,
-            description: `Value: ${slot.shopItem.price} | Quick Sell: ${Math.floor(slot.shopItem.price * 0.5)}`,
+            description: `Value: ${(0, format_1.fmtAmount)(slot.shopItem.price)} | Quick Sell: ${(0, format_1.fmtAmount)(Math.floor(slot.shopItem.price * 0.5))}`,
             value: slot.shopItem.id
         }));
         // 4. Build Embed
