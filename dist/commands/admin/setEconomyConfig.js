@@ -4,15 +4,15 @@ exports.handleSetEconomyConfig = handleSetEconomyConfig;
 const format_1 = require("../../utils/format");
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleSetEconomyConfig(message, args, type) {
     if (!message.guild)
         return;
-    // Check permissions (Admin only)
-    if (!message.member?.permissions.has("Administrator")) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Permission Denied", "You need Administrator permissions to use this command.")] });
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Permission Denied", "You need Administrator or Bot Commander permissions to use this command.")] });
     }
     const valueStr = args[0];
-    const value = (0, format_1.parseSmartAmount)(valueStr); // Supports 1k, 1m, etc.
+    const value = (0, format_1.parseSmartAmount)(valueStr);
     if (isNaN(value) || value < 0) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Value", "Please provide a valid positive number.")] });
     }
@@ -77,23 +77,16 @@ async function handleSetEconomyConfig(message, args, type) {
             name = "Wallet Capacity Limit";
             suffix = "";
             break;
-        case "toggle-ask":
-            // Special handling for boolean toggle. 
-            // We interpret value > 0 as true, 0 as false? Or just toggle?
-            // User requested "enable/disable". args[0] might be "on"/"off".
-            // But this function expects an int parse at the top. 
-            // I should modify the top parsing or just accept 1/0.
-            // Let's stick to 1=Enabled, 0=Disabled for simplicity within this function structure.
-            field = "enableAskCommand";
-            name = "Ask Command Status";
-            suffix = value > 0 ? "Enabled" : "Disabled";
-            // We need to cast value to boolean for the DB update
-            await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { [field]: value > 0 });
-            return message.reply({
-                embeds: [(0, embed_1.successEmbed)(message.author, "Configuration Updated", `Successfully set **Ask Command** to **${value > 0 ? "Enabled" : "Disabled"}**.`)]
-            });
     }
     await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { [field]: value });
+    const { logToChannel } = require("../../utils/discordLogger");
+    await logToChannel(message.client, {
+        guild: message.guild,
+        type: "ADMIN",
+        title: "Economy Config Updated",
+        description: `**Setting:** ${name}\n**New Value:** ${value}${suffix}\n**Updated By:** ${message.author.tag}`,
+        color: 0xFFA500
+    });
     return message.reply({
         embeds: [(0, embed_1.successEmbed)(message.author, "Configuration Updated", `Successfully set **${name}** to **${value}${suffix}**.`)]
     });

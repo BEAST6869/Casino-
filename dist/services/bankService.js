@@ -8,17 +8,15 @@ exports.depositToBank = depositToBank;
 exports.withdrawFromBank = withdrawFromBank;
 exports.getBankByUserId = getBankByUserId;
 exports.removeMoneyFromBank = removeMoneyFromBank;
-// src/services/bankService.ts
 const prisma_1 = __importDefault(require("../utils/prisma"));
-/** ensure bank row by user.id (prisma User.id) OR discordId */
-async function ensureBankForUser(userIdOrDiscordId) {
+async function ensureBankForUser(userIdOrDiscordId, guildId) {
     let userId = userIdOrDiscordId;
-    // Check if it's a Discord ID look-alike (digits) or assume it is if not ObjectId format
-    // Better: Try to find user by ID first. If not found, try Discord ID.
-    // Actually, since we have mixed usage, let's just do a robust lookup.
     if (!userIdOrDiscordId.match(/^[0-9a-fA-F]{24}$/)) {
-        // Not an ObjectId, assume Discord ID
-        const user = await prisma_1.default.user.findUnique({ where: { discordId: userIdOrDiscordId } });
+        if (!guildId)
+            throw new Error("Guild ID required for bank creation by Discord ID.");
+        const user = await prisma_1.default.user.findUnique({
+            where: { discordId_guildId: { discordId: userIdOrDiscordId, guildId } }
+        });
         if (!user)
             throw new Error("User not found for bank creation.");
         userId = user.id;
@@ -29,12 +27,10 @@ async function ensureBankForUser(userIdOrDiscordId) {
     return prisma_1.default.bank.create({ data: { userId, balance: 0 } });
 }
 const guildConfigService_1 = require("./guildConfigService");
-/** deposit from wallet -> bank (used by !deposit command) */
 async function depositToBank(walletId, userId, amount, guildId) {
     if (amount <= 0)
         throw new Error("Amount must be greater than 0.");
     const bank = await ensureBankForUser(userId);
-    // Check Bank Limit & Partial Deposit
     const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
     let depositAmount = amount;
     if (config.bankLimit) {
@@ -46,7 +42,6 @@ async function depositToBank(walletId, userId, amount, guildId) {
             depositAmount = space;
         }
     }
-    // Ensure wallet has funds (for the *actual* deposit amount)
     const wallet = await prisma_1.default.wallet.findUnique({ where: { id: walletId } });
     if (!wallet)
         throw new Error("Wallet not found.");
@@ -62,7 +57,6 @@ async function depositToBank(walletId, userId, amount, guildId) {
     ]);
     return { bank, actualAmount: depositAmount };
 }
-/** withdraw from bank -> wallet */
 async function withdrawFromBank(walletId, userId, amount) {
     if (amount <= 0)
         throw new Error("Amount must be greater than 0.");
@@ -82,12 +76,10 @@ async function withdrawFromBank(walletId, userId, amount) {
 async function getBankByUserId(userId) {
     return prisma_1.default.bank.findUnique({ where: { userId } });
 }
-/** Admin remove from bank */
 async function removeMoneyFromBank(userId, amount) {
     const bank = await ensureBankForUser(userId);
     if (bank.balance < amount)
         throw new Error("Insufficient bank funds.");
-    // We need walletId for the transaction log relation
     const wallet = await prisma_1.default.wallet.findUnique({ where: { userId } });
     if (!wallet)
         throw new Error("Wallet not found (DB Error).");

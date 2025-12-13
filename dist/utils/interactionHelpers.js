@@ -1,13 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.safeInteractionReply = safeInteractionReply;
-/**
- * Safely reply to an interaction. Handles common interaction flavors.
- * - If ChatInputCommandInteraction => reply / followUp as appropriate
- * - If MessageComponentInteraction => reply / followUp
- * - If AutocompleteInteraction => uses respond (if choices provided)
- * - Otherwise tries generic reply if present
- */
 async function safeInteractionReply(interaction, opts) {
     const { content, ephemeral = true } = opts;
     try {
@@ -32,23 +25,16 @@ async function safeInteractionReply(interaction, opts) {
                 return mc.followUp({ content, ephemeral });
             return mc.reply({ content, ephemeral });
         }
-        // Autocomplete interactions must use respond(choices) — can't reply normally.
         if (interaction.isAutocomplete?.()) {
-            // fallback: send ephemeral message to user via follow-up on the originating command is not possible here.
-            // Best we can do is ignore or log. We'll attempt a no-op.
             console.warn("safeInteractionReply called for AutocompleteInteraction — no reply possible.");
             return;
         }
-        // generic fallback (some Interaction types expose reply)
-        // @ts-ignore
-        if (typeof interaction.reply === "function") {
-            // @ts-ignore
+        if (interaction.isRepliable()) {
             return interaction.reply({ content, ephemeral });
         }
     }
     catch (err) {
         if (err.code === 10062) {
-            // Unknown interaction - ignore, as it's too late to reply
             return;
         }
         console.error("safeInteractionReply failed:", err);

@@ -3,28 +3,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSetRobConfig = handleSetRobConfig;
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
-const format_1 = require("../../utils/format"); // Import parseSmartAmount
+const format_1 = require("../../utils/format");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleSetRobConfig(message, args) {
-    if (!message.member?.permissions.has("Administrator")) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "Admins only.")] }); // Updated error message
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "Admins or Bot Commanders only.")] });
     }
     const sub = (args[0] ?? "").toLowerCase();
-    const valStr = args[1]; // Changed to valStr
+    const valStr = args[1];
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
-    // Display current settings if no args
     if (!sub) {
         const immuneRoles = config.robImmuneRoles.length
             ? config.robImmuneRoles.map(r => `< @& ${r}> `).join(", ")
             : "None";
-        const desc = `
-  ** Success Rate:** ${config.robSuccessPct}%
-** Fine Rate:** ${config.robFinePct}% (lost on fail)
-** Cooldown:** ${config.robCooldown} s
-  ** Immune Roles:** ${immuneRoles}
-`;
+        const desc = `  ** Success Rate:** ${config.robSuccessPct}%** Fine Rate:** ${config.robFinePct}% (lost on fail)** Cooldown:** ${config.robCooldown} s  ** Immune Roles:** ${immuneRoles}`;
         return message.reply({ embeds: [(0, embed_1.infoEmbed)(message.author, "👮 Rob Configuration", desc)] });
     }
-    // New logic for fine, min, max, chance
     if (sub === "fine") {
         if (!valStr)
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setrob fine <amount>`")] });
@@ -61,11 +55,9 @@ async function handleSetRobConfig(message, args) {
         const val = parseFloat(valStr);
         if (isNaN(val) || val < 0 || val > 100)
             return message.reply("Invalid chance (0-100).");
-        await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { robberyChance: val / 100 }); // Store as decimal 0.15
+        await (0, guildConfigService_1.updateGuildConfig)(message.guild.id, { robberyChance: val / 100 });
         return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Robbery Chance Updated", `Chance set to ** ${val}%**.`)] });
     }
-    // Original logic for cooldown (adapted to new structure)
-    // !setrob cooldown 300 (or 2h 30m)
     if (sub === "cooldown" || sub === "cd") {
         const timeStr = args.slice(1).join(" ");
         const sec = (0, format_1.parseDuration)(timeStr || valStr);
@@ -74,9 +66,8 @@ async function handleSetRobConfig(message, args) {
         await (0, guildConfigService_1.updateGuildConfig)(message.guildId, { robCooldown: sec });
         return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Updated", `Rob cooldown set to ** ${(0, format_1.formatDuration)(sec * 1000)}** `)] });
     }
-    // !setrob immunity add @Role
     if (sub === "immunity") {
-        const action = (args[1] ?? "").toLowerCase(); // add or remove
+        const action = (args[1] ?? "").toLowerCase();
         const roleId = message.mentions.roles.first()?.id || args[2];
         if (!roleId)
             return message.reply("Please mention a role or provide a valid Role ID.");

@@ -4,11 +4,10 @@ exports.handleAddShopItem = handleAddShopItem;
 const shopService_1 = require("../../services/shopService");
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleAddShopItem(message, args) {
-    if (!message.member?.permissions.has("Administrator"))
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member)))
         return;
-    // Usage: !shopadd <price> <name>
-    // Simplified for now because parsing "description" with spaces is hard in simple text cmds
     const name = args[0];
     const price = (0, format_1.parseSmartAmount)(args[1]);
     if (!name || isNaN(price) || price <= 0) {

@@ -3,20 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAdminViewConfig = handleAdminViewConfig;
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleAdminViewConfig(message, args) {
     try {
-        if (!message.member?.permissions.has("Administrator")) {
-            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins only.")] });
+        if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins or Bot Commanders only.")] });
         }
         const cfg = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
-        const desc = `
-**Currency:** ${cfg.currencyName}
-**Start Money:** ${cfg.startMoney}
-**Transfer Tax:** ${cfg.transferTax}%
-**Income Tax:** ${cfg.incomeTax}%
-**Bank Limit:** ${cfg.bankLimit}
-**Interest Rate (daily):** ${cfg.interestRate}%
-    `.trim();
+        const desc = `**Currency:** ${cfg.currencyName}**Start Money:** ${cfg.startMoney}**Transfer Tax:** ${cfg.transferTax}%**Income Tax:** ${cfg.incomeTax}%**Bank Limit:** ${cfg.bankLimit}**Interest Rate (daily):** ${cfg.interestRate}%    `.trim();
         return message.reply({ embeds: [(0, embed_1.infoEmbed)(message.author, "Guild Economy Settings", desc)] });
     }
     catch (err) {

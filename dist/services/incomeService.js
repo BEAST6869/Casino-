@@ -39,13 +39,10 @@ async function runIncomeCommand({ commandKey, discordId, guildId, userId, wallet
         const timestamp = expiresAt ? Math.floor(expiresAt / 1000) : Math.floor((Date.now() / 1000) + cd);
         throw new Error(`Cooldown active. Try again <t:${timestamp}:R>.`);
     }
-    // pick amount
     const amount = rand(cfg.minPay, cfg.maxPay);
-    // determine success
     const successPct = cfg.successPct ?? 100;
     const success = Math.random() * 100 < successPct;
     if (!success) {
-        // calculate penalty as percentage of the attempted amount
         const penaltyPct = cfg.failPenaltyPct ?? 50;
         const penalty = Math.max(1, Math.floor((amount * penaltyPct) / 100));
         await prisma_1.default.$transaction([
@@ -64,7 +61,6 @@ async function runIncomeCommand({ commandKey, discordId, guildId, userId, wallet
         ]);
         return { success: false, amount: -penalty, penalty, attempted: amount };
     }
-    // CHECK WALLET LIMIT (Only on success/income)
     if (guildId) {
         const guildConfig = await (0, guildConfigService_1.getGuildConfig)(guildId);
         if (guildConfig.walletLimit) {
@@ -74,7 +70,6 @@ async function runIncomeCommand({ commandKey, discordId, guildId, userId, wallet
             }
         }
     }
-    // success: award amount (mark as earned)
     await prisma_1.default.$transaction([
         prisma_1.default.transaction.create({
             data: {

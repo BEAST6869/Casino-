@@ -23,7 +23,6 @@ async function logToChannel(client, options) {
         if (options.thumbnail) {
             embed.setThumbnail(options.thumbnail);
         }
-        // Map types to specific colors if not provided
         if (!options.color) {
             switch (options.type) {
                 case "ADMIN":

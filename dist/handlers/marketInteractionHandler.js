@@ -28,7 +28,7 @@ async function handleButton(interaction) {
     try {
         if (customId === "market_home") {
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
-            const { total } = await (0, marketService_1.getMarketListings)(guildId, 1, 1); // just to get count
+            const { total } = await (0, marketService_1.getMarketListings)(guildId, 1, 1);
             const embed = new discord_js_1.EmbedBuilder()
                 .setTitle("🏴‍☠️ Black Market")
                 .setDescription(`Welcome to the underground.\n\n**Market Tax:** ${config.marketTax}%\n**Active Listings:** ${total}`)
@@ -63,14 +63,13 @@ async function handleButton(interaction) {
             await interaction.update({ embeds: [embed], components: [row] });
         }
         else if (customId === "market_sell_flow") {
-            // Show inventory dropdown
-            const userDb = await prisma_1.default.user.findUnique({ where: { discordId: user.id } });
+            const userDb = await prisma_1.default.user.findUnique({ where: { discordId_guildId: { discordId: user.id, guildId } } });
             if (!userDb)
                 return;
             const inventory = await prisma_1.default.inventory.findMany({
                 where: { userId: userDb.id },
                 include: { shopItem: true },
-                take: 25 // Discord limit
+                take: 25
             });
             if (inventory.length === 0) {
                 await interaction.reply({ content: "You have no items to sell.", ephemeral: true });
@@ -82,7 +81,7 @@ async function handleButton(interaction) {
                 .setPlaceholder("Select an item to sell")
                 .addOptions(inventory.map(inv => new discord_js_1.StringSelectMenuOptionBuilder()
                 .setLabel(`${inv.shopItem.name} (x${inv.amount})`)
-                .setValue(inv.shopItem.id) // Value is SHOP ITEM ID
+                .setValue(inv.shopItem.id)
                 .setDescription(`In Stock: ${inv.amount}`))));
             await interaction.reply({ content: "Select an item from your inventory to list:", components: [row], ephemeral: true });
         }
@@ -100,7 +99,7 @@ async function handleButton(interaction) {
             await interaction.showModal(modal);
         }
         else if (customId === "market_mine") {
-            const myListings = await (0, marketService_1.getUserListings)(user.id);
+            const myListings = await (0, marketService_1.getUserListings)(user.id, guildId);
             const embed = new discord_js_1.EmbedBuilder()
                 .setTitle("📦 Your Active Listings")
                 .setColor("#FFAA00");
@@ -111,8 +110,6 @@ async function handleButton(interaction) {
                 const desc = myListings.map(l => `**ID:** \`${l.id}\` | **${l.shopItem.name} (x${l.amount})** for ${l.totalPrice}`).join("\n");
                 embed.setDescription(desc);
             }
-            // Allow cancellation? Simplest is modal or reuse buy flow logic but for cancel
-            // Let's add a button to open "Cancel by ID" modal
             const row = new discord_js_1.ActionRowBuilder()
                 .addComponents(new discord_js_1.ButtonBuilder().setCustomId("market_cancel_flow").setLabel("Cancel Listing").setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder().setCustomId("market_home").setLabel("Back").setStyle(discord_js_1.ButtonStyle.Secondary));
             await interaction.update({ embeds: [embed], components: [row] });
@@ -142,7 +139,6 @@ async function handleButton(interaction) {
 async function handleSelectMenu(interaction) {
     if (interaction.customId === "market_sell_select") {
         const shopItemId = interaction.values[0];
-        // Open Modal for Qty and Price
         const modal = new discord_js_1.ModalBuilder()
             .setCustomId(`market_sell_modal_${shopItemId}`)
             .setTitle("List Item for Sale");
@@ -174,7 +170,6 @@ async function handleModal(interaction) {
             if (isNaN(amount) || isNaN(price))
                 throw new Error("Invalid numbers.");
             await (0, marketService_1.listItemOnMarket)(user.id, guildId, shopItemId, amount, price);
-            // Log Listing
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
             await (0, discordLogger_1.logToChannel)(interaction.client, {
                 guild: interaction.guild,
@@ -188,7 +183,6 @@ async function handleModal(interaction) {
         else if (customId === "market_buy_modal") {
             const listingId = fields.getTextInputValue("market_listing_id").trim();
             const res = await (0, marketService_1.buyItemFromMarket)(user.id, listingId);
-            // Log Buy
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
             await (0, discordLogger_1.logToChannel)(interaction.client, {
                 guild: interaction.guild,
@@ -202,7 +196,6 @@ async function handleModal(interaction) {
         else if (customId === "market_cancel_modal") {
             const listingId = fields.getTextInputValue("market_listing_id").trim();
             await (0, marketService_1.cancelListing)(user.id, listingId);
-            // Log Cancel
             await (0, discordLogger_1.logToChannel)(interaction.client, {
                 guild: interaction.guild,
                 type: "MARKET",

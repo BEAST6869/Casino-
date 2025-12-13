@@ -11,7 +11,6 @@ const cooldown_1 = require("../../utils/cooldown");
 const format_2 = require("../../utils/format");
 const SUITS = ["♠️", "♥️", "♦️", "♣️"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
-// --- Helpers ---
 function createDeck() {
     const deck = [];
     for (const suit of SUITS) {
@@ -41,9 +40,8 @@ function formatHand(hand, hideFirst = false) {
     }
     return hand.map(c => `\`${c.rank}${c.suit}\``).join("  ");
 }
-// --- Main Handler ---
 async function handleBlackjack(message, args) {
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
     const bet = (0, format_1.parseBetAmount)(args[0], user.wallet.balance);
     if (isNaN(bet) || bet <= 0) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Bet", "Please enter a valid amount (e.g., 500, 1k, all).")] });
@@ -51,11 +49,8 @@ async function handleBlackjack(message, args) {
     const amount = bet;
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const minBet = config.minBet;
-    // Use exact strings provided by user for consistent branding
     const eCasino = "<:casino:1445732641545654383>";
-    // Robustly resolve the currency emoji for display
     let currencyEmoji = config.currencyEmoji;
-    // Helper to ensure we have a valid emoji string for text fields
     if (/^\d+$/.test(currencyEmoji)) {
         const e = message.guild?.emojis.cache.get(currencyEmoji);
         currencyEmoji = e ? e.toString() : "💰";
@@ -63,13 +58,11 @@ async function handleBlackjack(message, args) {
     if (currencyEmoji === "1445732360204193824") {
         currencyEmoji = "<a:money:1445732360204193824>";
     }
-    // Check Minimum Bet
     if (amount < minBet) {
         return message.reply({
             embeds: [(0, embed_1.errorEmbed)(message.author, "Bet Too Low", `The minimum bet is **${(0, format_1.fmtCurrency)(minBet, currencyEmoji)}**.`)]
         });
     }
-    // Check Cooldown
     const cooldowns = config.gameCooldowns || {};
     const cdSeconds = cooldowns["bj"] || 0;
     if (cdSeconds > 0) {
@@ -81,11 +74,9 @@ async function handleBlackjack(message, args) {
             });
         }
     }
-    // Re-check funds before starting game loop
     if (user.wallet.balance < amount) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Insufficient Funds", "You don't have enough money.")] });
     }
-    // --- Start Game ---
     const deck = createDeck();
     const playerHand = [deck.pop(), deck.pop()];
     const dealerHand = [deck.pop(), deck.pop()];
@@ -95,7 +86,6 @@ async function handleBlackjack(message, args) {
     let result = "";
     let payout = 0;
     let currentBet = amount;
-    // Instant Blackjack check
     if (playerScore === 21) {
         gameOver = true;
         if (dealerScore === 21) {
@@ -131,7 +121,6 @@ async function handleBlackjack(message, args) {
                 .setDisabled(disabled || playerHand.length > 2 || user.wallet.balance < currentBet * 2))
         ];
     };
-    // If game over instantly
     if (gameOver) {
         try {
             const actualPayout = await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout, message.guildId);
@@ -142,7 +131,6 @@ async function handleBlackjack(message, args) {
         }
         return message.reply({ embeds: [getEmbed(true)] });
     }
-    // Active Game
     const msg = await message.reply({ embeds: [getEmbed(false)], components: getRows(false) });
     const collector = msg.createMessageComponentCollector({
         componentType: discord_js_1.ComponentType.Button,
@@ -184,7 +172,6 @@ async function handleBlackjack(message, args) {
             await i.update({ embeds: [getEmbed(false)], components: getRows(false) });
         }
         else {
-            // Dealer Play
             if (playerScore <= 21) {
                 while (dealerScore < 17) {
                     dealerHand.push(deck.pop());
@@ -208,7 +195,6 @@ async function handleBlackjack(message, args) {
                 }
             }
             let actualPayout = payout;
-            // Transaction
             try {
                 actualPayout = await (0, gameService_1.placeBetWithTransaction)(user.id, user.wallet.id, "blackjack", currentBet, "blackjack", payout > currentBet, payout, message.guildId);
             }
@@ -216,7 +202,6 @@ async function handleBlackjack(message, args) {
                 await i.update({ content: `Transaction failed: ${e.message}`, components: [] });
                 return;
             }
-            // Update local payout variable for the embed
             payout = actualPayout;
             await i.update({ embeds: [getEmbed(true)], components: [] });
         }

@@ -53,13 +53,11 @@ async function generateProfileImage(user, walletBal, bankBal, netWorth, avatarUr
         avatarUrl: avatarUrl
     };
     try {
-        // Cast context to 'any' to avoid strict type conflicts
         const context = ctx;
         const selectedTheme = (theme || "cyberpunk").toLowerCase();
         switch (selectedTheme) {
-            // --- STANDARD THEMES ---
             case "neon_noir":
-            case "cyberpunk": // Keep as backward compat alias just in case
+            case "cyberpunk":
                 await Styles.drawNeonNoir(context, width, height, data);
                 break;
             case "frozen":
@@ -95,7 +93,6 @@ async function generateProfileImage(user, walletBal, bankBal, netWorth, avatarUr
             case "casino":
                 await Styles.drawCasinoClassic(context, width, height, data);
                 break;
-            // --- PREMIUM THEMES ---
             case "obsidian":
                 await Styles.drawObsidian(context, width, height, data);
                 break;
@@ -116,8 +113,7 @@ async function generateProfileImage(user, walletBal, bankBal, netWorth, avatarUr
     }
     return new discord_js_1.AttachmentBuilder(canvas.toBuffer(), { name: "profile.png" });
 }
-async function generateRankCard(user, // { username, level, currentXp, requiredXp, rank, avatarUrl }
-theme = "classic") {
+async function generateRankCard(user, theme = "classic") {
     const width = 800;
     const height = 250;
     const canvas = (0, canvas_1.createCanvas)(width, height);

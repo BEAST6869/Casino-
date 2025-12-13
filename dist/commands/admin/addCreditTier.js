@@ -1,15 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAddCreditTier = handleAddCreditTier;
-const discord_js_1 = require("discord.js");
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleAddCreditTier(message, args) {
-    if (!message.member?.permissions.has(discord_js_1.PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "Admins only.")] });
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "Admins or Bot Commanders only.")] });
     }
-    // Schema: !addcredittier <minScore> <maxLoan> <duration>
     const minScore = parseInt(args[0]);
     const maxLoan = parseInt(args[1]);
     const durationStr = args.slice(2).join(" ");
@@ -21,7 +20,6 @@ async function handleAddCreditTier(message, args) {
         });
     }
     let currentConfig = config.creditConfig || [];
-    // Check if tier already exists
     const exists = currentConfig.some((c) => c.minScore === minScore);
     if (exists) {
         return message.reply({
@@ -29,7 +27,6 @@ async function handleAddCreditTier(message, args) {
         });
     }
     currentConfig.push({ minScore, maxLoan, maxDays });
-    // Sort by score
     currentConfig.sort((a, b) => a.minScore - b.minScore);
     await (0, guildConfigService_1.updateGuildConfig)(message.guildId, { creditConfig: currentConfig });
     const tiersList = currentConfig.map((c) => `• Score **${c.minScore}+** → Max Loan: **${c.maxLoan}** (${(0, format_1.formatDuration)(Math.round(c.maxDays * 86400000))})`).join("\n");

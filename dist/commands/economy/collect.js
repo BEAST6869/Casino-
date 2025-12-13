@@ -10,7 +10,6 @@ const discordLogger_1 = require("../../utils/discordLogger");
 async function handleCollectRoleIncome(message, args) {
     if (!message.guild || !message.member)
         return;
-    // Ensure user has a bank account to receive funds
     await (0, bankService_1.ensureBankForUser)(message.author.id);
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
     const roleIds = message.member.roles.cache.map(r => r.id);
@@ -23,7 +22,6 @@ async function handleCollectRoleIncome(message, args) {
             const role = message.guild?.roles.cache.get(d.roleId);
             return `• **${role?.name || "Unknown Role"}**: ${(0, format_1.fmtCurrency)(d.amount, config.currencyEmoji)}`;
         }).join("\n");
-        // Log Collection
         await (0, discordLogger_1.logToChannel)(message.client, {
             guild: message.guild,
             type: "ECONOMY",

@@ -4,26 +4,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.transferAnyFunds = transferAnyFunds;
-// src/services/transferService.ts
 const prisma_1 = __importDefault(require("../utils/prisma"));
-/**
- * Transfer from one user's wallet to another user's wallet.
- * Gifting relaxed: allows transfer as long as sender wallet.balance >= amount.
- */
 async function transferAnyFunds(fromWalletId, toDiscordId, amount, fromDiscordId, guildId) {
     if (amount <= 0)
         throw new Error("Invalid amount.");
-    // fetch sender wallet & check balance
     const fromWallet = await prisma_1.default.wallet.findUnique({ where: { id: fromWalletId } });
     if (!fromWallet)
         throw new Error("Sender wallet not found.");
     if (fromWallet.balance < amount)
         throw new Error("Insufficient funds.");
-    // ensure recipient user & wallet
+    if (!guildId)
+        throw new Error("Guild ID required for transfer.");
     const recipient = await prisma_1.default.user.upsert({
-        where: { discordId: toDiscordId },
+        where: { discordId_guildId: { discordId: toDiscordId, guildId } },
         update: {},
-        create: { discordId: toDiscordId, username: "Unknown", wallet: { create: { balance: 0 } } },
+        create: {
+            discordId: toDiscordId,
+            guildId,
+            username: "Unknown",
+            wallet: { create: { balance: 0 } }
+        },
         include: { wallet: true }
     });
     const toWalletId = recipient.wallet.id;

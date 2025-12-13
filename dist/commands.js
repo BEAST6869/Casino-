@@ -14,28 +14,27 @@ async function handleMessage(message) {
         case "deposit":
             return cmdDeposit(message, discordId, args);
         case "bet":
-            // choose implementation: prefer transaction when available
             return cmdBet(message, discordId, args);
         default:
             return message.reply("Unknown command. Try `!balance`, `!deposit <amount>`, `!bet <amount> <choice>`");
     }
 }
-async function ensureUserAndWallet(discordId, username) {
-    // create user + wallet if not exists, return user with wallet
+async function ensureUserAndWallet(discordId, guildId, username) {
     const user = await prisma_1.default.user.upsert({
-        where: { discordId },
+        where: { discordId_guildId: { discordId, guildId } },
         update: { username },
         create: {
             discordId,
+            guildId,
             username,
-            wallet: { create: { balance: 1000 } } // starting tokens
+            wallet: { create: { balance: 1000 } }
         },
         include: { wallet: true }
     });
     return user;
 }
 async function cmdBalance(message, discordId) {
-    const user = await ensureUserAndWallet(discordId, message.author.tag);
+    const user = await ensureUserAndWallet(discordId, message.guildId, message.author.tag);
     const balance = user.wallet?.balance ?? 0;
     await message.reply(`Your balance: ${balance}`);
 }
@@ -45,7 +44,7 @@ async function cmdDeposit(message, discordId, args) {
         await message.reply("Enter a valid deposit amount.");
         return;
     }
-    const user = await ensureUserAndWallet(discordId, message.author.tag);
+    const user = await ensureUserAndWallet(discordId, message.guildId, message.author.tag);
     const walletId = user.wallet.id;
     await prisma_1.default.$transaction([
         prisma_1.default.transaction.create({ data: { walletId, amount, type: "deposit", meta: { via: "manual" } } }),
@@ -54,11 +53,6 @@ async function cmdDeposit(message, discordId, args) {
     const refreshed = await prisma_1.default.wallet.findUnique({ where: { id: walletId } });
     await message.reply(`Deposited ${amount}. New balance: ${refreshed?.balance ?? 0}`);
 }
-/* ---------- BET logic ---------- */
-/**
- * Public command wrapper. This will attempt a transaction-based bet and fall back
- * to atomic fallback if transaction fails due to environment not supporting it.
- */
 async function cmdBet(message, discordId, args) {
     const amount = Math.floor(Number(args[0] || 0));
     const choice = args[1] ?? "default";
@@ -66,22 +60,19 @@ async function cmdBet(message, discordId, args) {
         await message.reply("Enter a valid bet amount.");
         return;
     }
-    const user = await ensureUserAndWallet(discordId, message.author.tag);
+    const user = await ensureUserAndWallet(discordId, message.guildId, message.author.tag);
     const wallet = user.wallet;
     if (!wallet) {
         await message.reply("Wallet not found. Try again.");
         return;
     }
-    // Quick local check
     if (wallet.balance < amount) {
         await message.reply("Insufficient funds.");
         return;
     }
-    // Game simulation (example): 50% win, 2x payout
     const didWin = Math.random() < 0.5;
     const payout = didWin ? amount * 2 : 0;
-    const netChange = payout - amount; // positive if win, negative if loss
-    // Try transaction first (recommended). If it errors because transactions unsupported, fallback.
+    const netChange = payout - amount;
     try {
         await betWithTransaction(user.id, wallet.id, amount, choice, didWin, payout, netChange);
     }
@@ -105,9 +96,6 @@ async function cmdBet(message, discordId, args) {
         await message.reply(`You lost ${amount}. New balance: ${newBal}`);
     }
 }
-/**
- * Recommended: multi-document transaction (requires MongoDB replica set / Atlas)
- */
 async function betWithTransaction(userId, walletId, amount, choice, didWin, payout, netChange) {
     await prisma_1.default.$transaction(async (tx) => {
         await tx.bet.create({
@@ -134,26 +122,14 @@ async function betWithTransaction(userId, walletId, amount, choice, didWin, payo
         });
     });
 }
-/**
- * Fallback for single-node Mongo (no multi-doc transactions).
- * Strategy:
- * 1) atomically decrement wallet if sufficient funds using updateMany (conditional)
- * 2) create Bet and Transaction documents afterwards. NOTE: not perfectly atomic across docs.
- *
- * This reduces the risk of overspend, but there is a small window where process crashes before bet/txn are written.
- */
 async function betFallbackAtomic(walletId, userId, amount, choice, didWin, payout, netChange) {
-    // Step 1: conditional decrement
     const res = await prisma_1.default.wallet.updateMany({
         where: { id: walletId, balance: { gte: amount } },
-        data: { balance: { decrement: amount } } // remove bet amount first
+        data: { balance: { decrement: amount } }
     });
     if (res.count === 0) {
         throw new Error("Insufficient funds at update stage");
     }
-    // At this point bet amount removed. If player loses, netChange is -amount and we're done.
-    // If player wins, need to add payout difference (payout - amount).
-    // Step 2: create bet and transaction
     await prisma_1.default.bet.create({
         data: {
             userId,
@@ -167,16 +143,13 @@ async function betFallbackAtomic(walletId, userId, amount, choice, didWin, payou
     await prisma_1.default.transaction.create({
         data: {
             walletId,
-            amount: didWin ? (payout) - amount : -amount, // record net in a way consistent with your system
+            amount: didWin ? (payout) - amount : -amount,
             type: didWin ? "payout" : "bet",
             meta: { choice, payout, didWin }
         }
     });
-    // If win, credit the wallet the net win (payout).
     if (didWin) {
         await prisma_1.default.wallet.update({ where: { id: walletId }, data: { balance: { increment: payout } } });
-        // Note: Because we decremented amount earlier, we increment payout to reflect giving payout back.
-        // You can instead do increment by (payout) or by (payout - amount) depending how you recorded txn.
     }
 }
 //# sourceMappingURL=commands.js.map

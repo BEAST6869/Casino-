@@ -4,10 +4,11 @@ exports.handleSetStartMoney = handleSetStartMoney;
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleSetStartMoney(message, args) {
     if (!message.guild)
         return;
-    if (!message.member?.permissions.has("Administrator"))
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member)))
         return;
     const amountStr = args[0];
     if (!amountStr) {

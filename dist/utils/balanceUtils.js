@@ -4,12 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getEarnedSums = getEarnedSums;
-// src/utils/balanceUtils.ts
 const prisma_1 = __importDefault(require("./prisma"));
-/**
- * Compute earned-only sums (useful for reporting).
- * Not used for gifting check because gifting is relaxed.
- */
 async function getEarnedSums(walletId) {
     const earnedAgg = await prisma_1.default.transaction.aggregate({
         where: { walletId, isEarned: true },

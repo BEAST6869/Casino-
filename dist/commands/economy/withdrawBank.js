@@ -3,14 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleWithdrawBank = handleWithdrawBank;
 const walletService_1 = require("../../services/walletService");
 const bankService_1 = require("../../services/bankService");
-const guildConfigService_1 = require("../../services/guildConfigService"); // Import
+const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
-const discordLogger_1 = require("../../utils/discordLogger"); // Import fmtCurrency
+const discordLogger_1 = require("../../utils/discordLogger");
 async function handleWithdrawBank(message, args) {
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
     const bank = await (0, bankService_1.getBankByUserId)(user.id);
-    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId); // Fetch config
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const emoji = config.currencyEmoji;
     if (!bank)
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Bank Account", "You do not have a bank account.")] });
@@ -25,7 +25,6 @@ async function handleWithdrawBank(message, args) {
     try {
         await (0, bankService_1.withdrawFromBank)(user.wallet.id, user.id, amount);
         const updated = await (0, bankService_1.getBankByUserId)(user.id);
-        // Log Withdraw
         await (0, discordLogger_1.logToChannel)(message.client, {
             guild: message.guild,
             type: "ECONOMY",

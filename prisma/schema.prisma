@@ -44,6 +44,7 @@ model User {
   isCasinoAdmin Boolean @default(false)
   investments Investment[]
   listings    MarketListing[]
+  activeEffects ActiveEffect[]
 }
 
 model Wallet {
@@ -123,7 +124,13 @@ model ShopItem {
   description  String   @default("No description")
   price        Int
   stock        Int      @default(-1) // -1 = unlimited
-  roleId       String?  
+  roleId       String?  // Deprecated, use effects instead
+  
+  // Dynamic item system
+  itemType     String   @default("COLLECTIBLE") // CONSUMABLE, ROLE, BUFF, COLLECTIBLE
+  effects      Json?    // Array of effect objects
+  consumable   Boolean  @default(false)
+  maxUses      Int?     // For consumables, null = unlimited uses
   
   // Relations
   inventory    Inventory[]
@@ -284,6 +291,22 @@ model MarketListing {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model ActiveEffect {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String   @db.ObjectId
+  guildId    String
+  
+  effectType String   // XP_MULTIPLIER, LUCK_BOOST, etc.
+  value      Float    // Multiplier value or amount
+  meta       Json?
+  expiresAt  DateTime?
+  
+  createdAt  DateTime @default(now())
+  
+  @@index([userId, expiresAt])
 }
 
 model CommandPermission {

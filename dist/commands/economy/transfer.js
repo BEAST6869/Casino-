@@ -18,7 +18,7 @@ async function handleTransfer(message, args) {
         if (!/^\d+$/.test(toId)) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Recipient", "Please mention a valid user to transfer to.")] });
         }
-        const sender = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+        const sender = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
         if (!sender.wallet) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Wallet Not Found", "Your wallet could not be found. Please try again.")] });
         }
@@ -28,9 +28,7 @@ async function handleTransfer(message, args) {
         }
         try {
             await (0, transferService_1.transferAnyFunds)(sender.wallet.id, toId, amount, message.author.id, message.guildId ?? undefined);
-            // Updated response with fmtAmount
             const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
-            // Log Transfer
             await (0, discordLogger_1.logToChannel)(message.client, {
                 guild: message.guild,
                 type: "ECONOMY",

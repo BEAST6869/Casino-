@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleIncome = handleIncome;
 const walletService_1 = require("../../services/walletService");
 const incomeService_1 = require("../../services/incomeService");
-const guildConfigService_1 = require("../../services/guildConfigService"); // Cached Config
+const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
 const discordLogger_1 = require("../../utils/discordLogger");
@@ -13,10 +13,9 @@ async function handleIncome(message) {
     if (!["work", "crime", "beg", "slut"].includes(commandKey)) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Unknown", "Use: !work, !crime, !beg or !slut")] });
     }
-    // 1. Fetch Config (Instant Cache)
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const emoji = config.currencyEmoji;
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
     try {
         const res = await (0, incomeService_1.runIncomeCommand)({
             commandKey,
@@ -26,7 +25,6 @@ async function handleIncome(message) {
             walletId: user.wallet.id
         });
         if (res.success) {
-            // Log Success
             await (0, discordLogger_1.logToChannel)(message.client, {
                 guild: message.guild,
                 type: "ECONOMY",
@@ -39,7 +37,6 @@ async function handleIncome(message) {
             });
         }
         else {
-            // Log Failure (Penalty)
             await (0, discordLogger_1.logToChannel)(message.client, {
                 guild: message.guild,
                 type: "ECONOMY",

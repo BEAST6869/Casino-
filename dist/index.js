@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// src/index.ts
 require("dotenv/config");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
@@ -18,7 +17,6 @@ const bankInteractionHandler_1 = require("./handlers/bankInteractionHandler");
 const marketInteractionHandler_1 = require("./handlers/marketInteractionHandler");
 const inventoryInteractionHandler_1 = require("./handlers/inventoryInteractionHandler");
 const scheduler_1 = require("./scheduler");
-// --- load slash commands automatically from src/commands/slash ---
 const slashCommands = new Map();
 const slashData = [];
 const slashDir = path_1.default.join(__dirname, "commands", "slash");
@@ -26,8 +24,6 @@ if (fs_1.default.existsSync(slashDir)) {
     for (const file of fs_1.default.readdirSync(slashDir)) {
         if (!file.endsWith(".ts") && !file.endsWith(".js"))
             continue;
-        // require the module
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const mod = require(path_1.default.join(slashDir, file));
         if (mod && mod.data && mod.execute) {
             slashCommands.set(mod.data.name, mod);
@@ -54,7 +50,6 @@ const client = new discord_js_1.Client({
 });
 client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user?.tag}`);
-    // connect prisma
     try {
         await prisma_1.default.$connect();
         console.log("📦 Prisma connected");
@@ -67,7 +62,6 @@ client.once("ready", async () => {
     console.log("Emoji registry keys:", (0, emojiRegistry_1.listEmojiKeys)().slice(0, 200));
     (0, xpListener_1.setupXpListener)(client);
     (0, scheduler_1.initScheduler)(client);
-    // register slash commands to each guild the bot is in (guild-scoped)
     if (slashData.length > 0) {
         const rest = new discord_js_1.REST({ version: "10" }).setToken(token);
         try {
@@ -91,10 +85,8 @@ client.once("ready", async () => {
         console.log("No slash commands to register.");
     }
 });
-// interaction (slash & button/modal) handler
 client.on("interactionCreate", async (interaction) => {
     try {
-        // 1. Slash Commands
         if (interaction.isChatInputCommand()) {
             const ci = interaction;
             const module = slashCommands.get(ci.commandName);
@@ -103,20 +95,16 @@ client.on("interactionCreate", async (interaction) => {
             }
             return await module.execute(ci);
         }
-        // 2. Banking Interactions
         const id = interaction.customId || "";
         if (id.startsWith("bank_") || id.startsWith("loan_") || id.startsWith("invest_") || id.startsWith("repay_")) {
             return await (0, bankInteractionHandler_1.handleBankInteraction)(interaction);
         }
-        // 3. Market Interactions
         if (id.startsWith("market_") || id.startsWith("sell_")) {
             return await (0, marketInteractionHandler_1.handleMarketInteraction)(interaction);
         }
-        // 4. Inventory Interactions
         if (id.startsWith("inv_")) {
             return await (0, inventoryInteractionHandler_1.handleInventoryInteraction)(interaction);
         }
-        // 5. Ask Command Interactions
         if (id.startsWith("ask_")) {
             const { handleAskInteraction } = require("./handlers/askInteractionHandler");
             return await handleAskInteraction(interaction);
@@ -127,31 +115,25 @@ client.on("interactionCreate", async (interaction) => {
         await (0, interactionHelpers_1.safeInteractionReply)(interaction, { content: "Internal error while processing interaction.", ephemeral: true });
     }
 });
-// message-based commands with per-guild prefix
 client.on("messageCreate", async (message) => {
     try {
         if (message.author.bot)
             return;
         if (!message.guild)
-            return; // ignore DMs for message commands
-        // fetch guild config (includes prefix)
+            return;
         const cfg = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
         const prefix = cfg?.prefix ?? "!";
         if (!message.content.startsWith(prefix))
             return;
-        // strip prefix and normalize to router's expectation (router expects content starting with "!")
         const contentWithoutPrefix = message.content.slice(prefix.length).trim();
         if (!contentWithoutPrefix)
             return;
-        // temporarily set message.content to a "!"-prefixed version so your existing router works unchanged
         const originalContent = message.content;
         try {
-            // mutate for compatibility with your router (it reads message.content)
             message.content = "!" + contentWithoutPrefix;
             await (0, commandRouter_1.routeMessage)(client, message, prefix);
         }
         finally {
-            // restore original content
             message.content = originalContent;
         }
     }

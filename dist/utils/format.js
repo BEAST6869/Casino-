@@ -26,15 +26,9 @@ const formatDuration = (ms) => {
     return parts.join(" ") || "0s";
 };
 exports.formatDuration = formatDuration;
-/**
- * Parses a duration string (e.g. "1d 2h 30m") into seconds.
- * Supported units: d (days), h (hours), m (minutes), s (seconds).
- * Returns null if invalid or 0.
- */
 const parseDuration = (input) => {
     if (!input)
         return null;
-    // If it's just a number, assume seconds for backward compatibility
     if (/^\d+$/.test(input)) {
         return parseInt(input);
     }
@@ -64,10 +58,6 @@ const parseDuration = (input) => {
     return found ? totalSeconds : null;
 };
 exports.parseDuration = parseDuration;
-/**
- * Parses duration string to Days (float).
- * 1d 12h -> 1.5
- */
 const parseDurationToDays = (input) => {
     const seconds = (0, exports.parseDuration)(input);
     if (seconds === null)
@@ -75,22 +65,6 @@ const parseDurationToDays = (input) => {
     return seconds / 86400;
 };
 exports.parseDurationToDays = parseDurationToDays;
-/**
- * Parses a bet amount string.
- * Supports: 'all', 'max', 'allin' -> maxBalance
- * Suffixes: k (1e3), m (1e6), b (1e9)
- * Scientific: 1e4 -> 10000
- */
-/**
- * Parses a string input for currency amount.
- * Supports:
- * - "all", "max", "allin" -> returns maxBalance
- * - "k" suffix -> thousands (e.g. 5k = 5000)
- * - "m" suffix -> millions (e.g. 1m = 1000000)
- * - "b" suffix -> billions
- * - Scientific notation (e.g. 1e4)
- * - Plain numbers
- */
 const parseSmartAmount = (input, maxBalance = Infinity) => {
     if (!input)
         return NaN;
@@ -98,7 +72,6 @@ const parseSmartAmount = (input, maxBalance = Infinity) => {
     if (["all", "max", "allin"].includes(lower)) {
         return maxBalance;
     }
-    // Handle suffixes
     const suffixMultipliers = {
         'k': 1e3,
         'm': 1e6,
@@ -109,7 +82,6 @@ const parseSmartAmount = (input, maxBalance = Infinity) => {
         const numPart = parseFloat(lower.slice(0, -1));
         return Math.floor(numPart * suffixMultipliers[suffix]);
     }
-    // Handle scientific notation or plain number
     return Math.floor(parseFloat(lower));
 };
 exports.parseSmartAmount = parseSmartAmount;

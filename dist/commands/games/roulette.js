@@ -10,16 +10,13 @@ const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
 const cooldown_1 = require("../../utils/cooldown");
 const format_2 = require("../../utils/format");
-// --- THE MENU (Guide & Play Info) ---
 async function handleRouletteMenu(message) {
-    // Custom Emojis provided by user
     const eCasino = "<a:casino:1445732641545654383>";
     const eScroll = "<:scroll:1446218234171887760>";
     const eDicesBtn = "<:dices:1446220119733702767>";
     const eBlackCoin = "<:BlackCoin:1446217613632999565>";
     const eRedCoin = "<:redcoin:1446217599439343772>";
     const eDiceSpecific = "<a:dice:1446217848551899300>";
-    // Helper to extract ID for buttons
     const parseEmojiId = (str) => str.match(/:(\d+)>/)?.[1] ?? (str.match(/^\d+$/) ? str : str);
     const embed = new discord_js_1.EmbedBuilder()
         .setTitle(`${eCasino} Roulette Table`)
@@ -65,14 +62,11 @@ async function handleRouletteMenu(message) {
         }
     });
 }
-// --- THE GAME LOGIC (!bet) ---
 async function handleBet(message, args) {
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
     let amount = (0, format_1.parseBetAmount)(args[0], user.wallet.balance);
     let choiceRaw = (args[1] || "").toLowerCase();
-    // Support flipped args: !roulette red 100
     if (isNaN(amount)) {
-        // Try parsing second arg as amount
         amount = (0, format_1.parseBetAmount)(args[1], user.wallet.balance);
         choiceRaw = (args[0] || "").toLowerCase();
     }
@@ -81,14 +75,12 @@ async function handleBet(message, args) {
     }
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const emoji = config.currencyEmoji;
-    const minBet = config.minBet; // <--- Fetch Min Bet
-    // Check Minimum Bet
+    const minBet = config.minBet;
     if (amount < minBet) {
         return message.reply({
             embeds: [(0, embed_1.errorEmbed)(message.author, "Bet Too Low", `The minimum bet is **${(0, format_1.fmtCurrency)(minBet, emoji)}**.`)]
         });
     }
-    // Check Cooldown
     const cooldowns = config.gameCooldowns || {};
     const cdSeconds = cooldowns["roulette"] || 0;
     if (cdSeconds > 0) {
@@ -103,8 +95,7 @@ async function handleBet(message, args) {
     if (user.wallet.balance < amount) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Insufficient Funds", "You don't have enough money in your wallet.")] });
     }
-    // --- Roulette Logic ---
-    const spin = Math.floor(Math.random() * 37); // 0-36
+    const spin = Math.floor(Math.random() * 37);
     const redNumbers = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
     const isRed = redNumbers.has(spin);
     const isBlack = !isRed && spin !== 0;
@@ -127,7 +118,6 @@ async function handleBet(message, args) {
         multiplier = 2;
     }
     else {
-        // Number bet
         const numChoice = parseInt(choiceRaw);
         if (!isNaN(numChoice) && numChoice >= 0 && numChoice <= 36) {
             didWin = (spin === numChoice);
@@ -146,7 +136,6 @@ async function handleBet(message, args) {
         actualPayout = await (0, gameService_1.placeBetFallback)(user.wallet.id, user.id, "roulette_v1", amount, choiceRaw, didWin, payout, message.guildId);
     }
     payout = actualPayout;
-    // Result Embed
     const eRedCoin = "<:redcoin:1446217599439343772>";
     const eBlackCoin = "<:BlackCoin:1446217613632999565>";
     const displayColor = spin === 0 ? "🟢" : (isRed ? eRedCoin : eBlackCoin);
@@ -156,7 +145,6 @@ async function handleBet(message, args) {
         .setDescription(`**Result:** ${displayColor} **${spin}**\n` +
         `**Your Bet:** ${choiceRaw}\n` +
         `**${didWin ? "Won" : "Lost"}:** ${(0, format_1.fmtCurrency)(didWin ? payout : amount, emoji)}`)
-        // Footer shows only numeric balance (clean look)
         .setFooter({ text: `${message.author.username}'s Wallet: ${(user.wallet.balance - amount + payout).toLocaleString()}` });
     return message.reply({ embeds: [resultEmbed] });
 }

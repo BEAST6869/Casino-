@@ -6,9 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleCasinoUnban = handleCasinoUnban;
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleCasinoUnban(message, args) {
-    if (!message.member?.permissions.has("Administrator")) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Administrator required.")] });
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Administrator or Bot Commander required.")] });
     }
     const mention = args[0];
     if (!mention) {
@@ -17,8 +18,16 @@ async function handleCasinoUnban(message, args) {
     const discordId = mention.replace(/[<@!>]/g, "");
     try {
         const user = await prisma_1.default.user.update({
-            where: { discordId },
+            where: { discordId_guildId: { discordId, guildId: message.guildId } },
             data: { isBanned: false }
+        });
+        const { logToChannel } = require("../../utils/discordLogger");
+        await logToChannel(message.client, {
+            guild: message.guild,
+            type: "MODERATION",
+            title: "User Unbanned",
+            description: `**User:** <@${discordId}>\n**Unbanned By:** ${message.author.tag}`,
+            color: 0x00FF00
         });
         return message.reply({
             embeds: [(0, embed_1.successEmbed)(message.author, "User Unbanned", `✅ **<@${discordId}>** has been unbanned from the casino.`)]

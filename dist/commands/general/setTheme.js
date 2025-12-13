@@ -24,7 +24,6 @@ async function handleSetTheme(message, args) {
         new discord_js_1.StringSelectMenuOptionBuilder().setLabel("Glassmorphism Pro").setValue("glass").setDescription("Frosted glass & soft gradients").setEmoji("🔮"),
         new discord_js_1.StringSelectMenuOptionBuilder().setLabel("Midnight Prism").setValue("prism").setDescription("Deep space & sharp crystals").setEmoji("💎"),
     ];
-    // Embed to show the user what they are selecting
     const embed = new discord_js_1.EmbedBuilder()
         .setTitle("🎨 Profile Theme Selection")
         .setDescription("Select a theme from the dropdown menu below to customize your `!profile` card.\n\n**Available Themes:**")
@@ -43,11 +42,11 @@ async function handleSetTheme(message, args) {
     });
     collector.on("collect", async (i) => {
         const theme = i.values[0];
-        // Update user preference in the database
         await prisma_1.default.user.upsert({
-            where: { discordId: message.author.id },
+            where: { discordId_guildId: { discordId: message.author.id, guildId: message.guildId } },
             create: {
                 discordId: message.author.id,
+                guildId: message.guildId,
                 username: message.author.username,
                 profileTheme: theme
             },

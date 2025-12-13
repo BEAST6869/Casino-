@@ -4,18 +4,17 @@ exports.handleSetRoleIncome = handleSetRoleIncome;
 const roleIncomeService_1 = require("../../services/roleIncomeService");
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleSetRoleIncome(message, args) {
     if (!message.guild)
         return;
-    if (!message.member?.permissions.has("Administrator")) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "Admins only.")] });
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "Admins or Bot Commanders only.")] });
     }
-    // Args: <@Role> <amount> [cooldown]
     const role = message.mentions.roles.first();
     const amount = parseInt(args[1]);
-    // Parse duration from remaining args
     const timeArgs = args.slice(2).join(" ");
-    const cooldown = timeArgs ? (0, format_1.parseDuration)(timeArgs) : 86400; // Default 24h
+    const cooldown = timeArgs ? (0, format_1.parseDuration)(timeArgs) : 86400;
     if (!role || isNaN(amount) || cooldown === null) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!set-role-income @Role <amount> [cooldown]`\nExample: `!set-role-income @VIP 1000 1d 12h`")] });
     }

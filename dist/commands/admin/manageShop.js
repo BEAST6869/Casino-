@@ -6,24 +6,21 @@ const shopService_1 = require("../../services/shopService");
 const guildConfigService_1 = require("../../services/guildConfigService");
 const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleManageShop(message, args) {
-    // 1. Permission Check
-    if (!message.member?.permissions.has("Administrator")) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "Admins only.")] });
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "Admins or Bot Commanders only.")] });
     }
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const emoji = config.currencyEmoji;
     const searchName = args.join(" ");
     let targetItem;
-    // 2. Resolve Target Item (Search or Select)
     if (searchName) {
-        // Direct lookup: !manageitem Sword
         targetItem = await (0, shopService_1.getShopItemByName)(message.guildId, searchName);
         if (!targetItem)
             return message.reply("Item not found.");
     }
     else {
-        // Dropdown lookup: !manageitem
         const items = await (0, shopService_1.getShopItems)(message.guildId);
         if (items.length === 0)
             return message.reply("Shop is empty.");
@@ -43,7 +40,7 @@ async function handleManageShop(message, args) {
                 filter: (i) => i.user.id === message.author.id
             });
             targetItem = items.find(i => i.id === selection.values[0]);
-            await selection.deferUpdate(); // Acknowledge selection
+            await selection.deferUpdate();
         }
         catch {
             return msg.edit({ content: "Timed out.", components: [] });
@@ -51,7 +48,6 @@ async function handleManageShop(message, args) {
     }
     if (!targetItem)
         return message.reply("Error finding item.");
-    // 3. Render the Control Panel
     const renderPanel = (item) => {
         const embed = new discord_js_1.EmbedBuilder()
             .setTitle(`⚙️ Managing: ${item.name}`)
@@ -61,31 +57,27 @@ async function handleManageShop(message, args) {
         const row2 = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId("btn_delete").setLabel("DELETE ITEM").setStyle(discord_js_1.ButtonStyle.Danger).setEmoji("🗑️"), new discord_js_1.ButtonBuilder().setCustomId("btn_done").setLabel("Done").setStyle(discord_js_1.ButtonStyle.Success));
         return { embeds: [embed], components: [row1, row2] };
     };
-    // 4. Send Panel & Start Collector
     const ui = renderPanel(targetItem);
     const panelMsg = await message.reply(ui);
     const collector = panelMsg.createMessageComponentCollector({
         componentType: discord_js_1.ComponentType.Button,
-        time: 300000, // 5 mins
+        time: 300000,
         filter: (i) => i.user.id === message.author.id
     });
     collector.on("collect", async (interaction) => {
         if (!targetItem)
             return;
-        // --- DELETE Action ---
         if (interaction.customId === "btn_delete") {
             await (0, shopService_1.deleteShopItem)(targetItem.id);
             await interaction.update({ content: `🗑️ **${targetItem.name}** has been deleted.`, embeds: [], components: [] });
             collector.stop();
             return;
         }
-        // --- DONE Action ---
         if (interaction.customId === "btn_done") {
             await interaction.update({ components: [] });
             collector.stop();
             return;
         }
-        // --- EDIT Actions (Open Modal) ---
         let modalId = "";
         let label = "";
         let fieldId = "";
@@ -124,14 +116,12 @@ async function handleManageShop(message, args) {
             modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(input));
             await interaction.showModal(modal);
             try {
-                // Wait for Modal Submit
                 const submission = await interaction.awaitModalSubmit({
                     time: 60000,
                     filter: (i) => i.user.id === message.author.id
                 });
                 const newValue = submission.fields.getTextInputValue(fieldId);
                 const updates = {};
-                // Validate Inputs
                 if (modalId === "modal_name")
                     updates.name = newValue;
                 if (modalId === "modal_desc")
@@ -152,14 +142,11 @@ async function handleManageShop(message, args) {
                     }
                     updates.stock = s;
                 }
-                // Update Database
                 targetItem = await (0, shopService_1.updateShopItem)(message.guildId, targetItem.id, updates);
-                // Refresh Panel (Using edit instead of update to be safe)
                 await submission.deferUpdate();
                 await panelMsg.edit(renderPanel(targetItem));
             }
             catch (e) {
-                // Modal timed out or cancelled
             }
         }
     });

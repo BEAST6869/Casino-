@@ -6,7 +6,6 @@ const setupXpListener = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot || !message.guild)
             return;
-        // Random XP between 15 and 25
         const xpAmount = Math.floor(Math.random() * 11) + 15;
         try {
             const result = await levelService_1.LevelService.addXp(message.author.id, message.guild.id, xpAmount);

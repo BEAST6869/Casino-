@@ -23,8 +23,7 @@ async function handleButton(interaction) {
         return;
     switch (customId) {
         case "bank_refresh": {
-            // Re-render main dashboard
-            const summary = await (0, bankingService_1.getFinancialSummary)(user.id);
+            const summary = await (0, bankingService_1.getFinancialSummary)(user.id, guildId);
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
             const embed = new discord_js_1.EmbedBuilder()
                 .setTitle(`<:bankk:1445689134181126167> ${user.username}'s Financial Dashboard`)
@@ -39,9 +38,9 @@ async function handleButton(interaction) {
             break;
         }
         case "bank_loans": {
-            const summary = await (0, bankingService_1.getFinancialSummary)(user.id);
+            const summary = await (0, bankingService_1.getFinancialSummary)(user.id, guildId);
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
-            // Temporary cast as prisma generate failed due to lock
+            const isLoanSystemEnabled = !(config.disabledCommands && config.disabledCommands.includes("loan"));
             const limits = (0, bankingService_1.calculateCreditLimits)(summary.creditScore, config);
             const embed = new discord_js_1.EmbedBuilder()
                 .setTitle("<a:credits:1445689337172721716> Loan Management")
@@ -61,21 +60,30 @@ async function handleButton(interaction) {
                 const maxLoans = config.maxActiveLoans || 1;
                 embed.setDescription(`**Active Loans (${summary.activeLoans.length}/${maxLoans})**\nRepayments are applied to the oldest loan first.`)
                     .addFields(loanFields);
-                // If any loan is overdue, red color
                 const anyOverdue = summary.activeLoans.some(l => new Date() > new Date(l.dueDate));
                 if (anyOverdue)
                     embed.setColor("#FF0000");
             }
             else {
-                embed.setDescription(`You are eligible for a loan based on your credit score.\n**Interest Rate:** ${config.loanInterestRate}%`);
+                if (isLoanSystemEnabled) {
+                    if (summary.isLoanBanned) {
+                        embed.setDescription(`🚫 **You are banned from taking loans.**\nIf you believe this is a mistake, contact an administrator.`);
+                        embed.setColor("#FF0000");
+                    }
+                    else {
+                        embed.setDescription(`You are eligible for a loan based on your credit score.\n**Interest Rate:** ${config.loanInterestRate}%`);
+                    }
+                }
+                else {
+                    embed.setDescription(`🚫 **Loan System is currently Disabled**\nNew loans cannot be taken at this time.`);
+                    embed.setColor("#808080");
+                }
             }
             const row = new discord_js_1.ActionRowBuilder();
             const maxLoans = config.maxActiveLoans || 1;
-            // Allow apply if below max loans
-            if (summary.activeLoans.length < maxLoans) {
+            if (summary.activeLoans.length < maxLoans && isLoanSystemEnabled && !summary.isLoanBanned) {
                 row.addComponents(new discord_js_1.ButtonBuilder().setCustomId("loan_apply_btn").setLabel("Apply for Loan").setStyle(discord_js_1.ButtonStyle.Success));
             }
-            // Allow repay if any loan exists
             if (summary.activeLoans.length > 0) {
                 row.addComponents(new discord_js_1.ButtonBuilder().setCustomId("loan_repay_btn").setLabel("Repay Loan").setStyle(discord_js_1.ButtonStyle.Primary).setEmoji("1445689337172721716"));
             }
@@ -84,7 +92,7 @@ async function handleButton(interaction) {
             break;
         }
         case "bank_invest": {
-            const summary = await (0, bankingService_1.getFinancialSummary)(user.id);
+            const summary = await (0, bankingService_1.getFinancialSummary)(user.id, guildId);
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
             const embed = new discord_js_1.EmbedBuilder()
                 .setTitle("📈 Investment Portfolio")
@@ -107,13 +115,11 @@ async function handleButton(interaction) {
             break;
         }
         case "bank_deposit_withdraw": {
-            // Simple ephemeral advice
             await interaction.reply({ content: "Use `!deposit <amount>` or `!withdraw <amount>` for basic banking.", ephemeral: true });
             break;
         }
         case "bank_main_btn": {
-            // Go back to main
-            const summary = await (0, bankingService_1.getFinancialSummary)(user.id);
+            const summary = await (0, bankingService_1.getFinancialSummary)(user.id, guildId);
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
             const embed = new discord_js_1.EmbedBuilder()
                 .setTitle(`<:bankk:1445689134181126167> ${user.username}'s Financial Dashboard`)
@@ -129,8 +135,11 @@ async function handleButton(interaction) {
             await interaction.update({ embeds: [embed], components: [row] });
             break;
         }
-        // --- Sub Actions ---
         case "loan_apply_btn": {
+            const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
+            if (config.disabledCommands && config.disabledCommands.includes("loan")) {
+                return interaction.reply({ content: "🚫 The loan system is currently disabled.", ephemeral: true });
+            }
             const modal = new discord_js_1.ModalBuilder()
                 .setCustomId("loan_apply_modal")
                 .setTitle("Apply for Loan");
@@ -159,7 +168,6 @@ async function handleButton(interaction) {
             break;
         }
         case "invest_new_btn": {
-            // Show selection for FD or RD
             const embed = new discord_js_1.EmbedBuilder()
                 .setTitle("Select Investment Type")
                 .setDescription("Choose the type of investment you want to make.");
@@ -172,13 +180,12 @@ async function handleButton(interaction) {
             break;
         }
         case "invest_collect_btn": {
-            const results = await (0, bankingService_1.checkMaturedInvestments)(user.id);
+            const results = await (0, bankingService_1.checkMaturedInvestments)(user.id, guildId);
             if (results.length === 0) {
                 await interaction.reply({ content: "No matured investments to collect yet.", ephemeral: true });
             }
             else {
                 const total = results.reduce((a, b) => a + b.payout, 0);
-                // Log Collection
                 const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
                 await (0, discordLogger_1.logToChannel)(interaction.client, {
                     guild: interaction.guild,
@@ -197,17 +204,20 @@ async function handleModal(interaction) {
     const { customId, fields, user, guildId } = interaction;
     if (!guildId)
         return;
-    // Defer immediately to prevent timeout
     await interaction.deferReply({ ephemeral: true });
     try {
         if (customId === "loan_apply_modal") {
+            const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
+            if (config.disabledCommands && config.disabledCommands.includes("loan"))
+                throw new Error("Loan system is disabled.");
+            const userCheck = await (0, bankingService_1.getFinancialSummary)(user.id, guildId);
+            if (userCheck.isLoanBanned)
+                throw new Error("You are banned from taking loans.");
             const amountStr = fields.getTextInputValue("loan_amount");
             const amount = parseInt(amountStr);
             if (isNaN(amount))
                 throw new Error("Invalid amount.");
             const result = await (0, bankingService_1.applyForLoan)(user.id, guildId, amount);
-            // Log Loan
-            const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
             await (0, discordLogger_1.logToChannel)(interaction.client, {
                 guild: interaction.guild,
                 type: "ECONOMY",
@@ -220,12 +230,9 @@ async function handleModal(interaction) {
         else if (customId === "loan_repay_modal") {
             const amountStr = fields.getTextInputValue("repay_amount");
             let amount = parseInt(amountStr);
-            // Handle "all" logic if we had time, for now assume number.
             if (isNaN(amount)) {
-                // hack for 'all'
                 if (amountStr.toLowerCase() === 'all') {
-                    const summary = await (0, bankingService_1.getFinancialSummary)(user.id);
-                    // Sum of all active loans repayment
+                    const summary = await (0, bankingService_1.getFinancialSummary)(user.id, guildId);
                     if (summary.activeLoans.length > 0)
                         amount = summary.activeLoans.reduce((sum, l) => sum + l.totalRepayment, 0);
                     else
@@ -236,7 +243,6 @@ async function handleModal(interaction) {
                 }
             }
             const result = await (0, bankingService_1.repayLoan)(user.id, guildId, amount);
-            // Log Repayment
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
             await (0, discordLogger_1.logToChannel)(interaction.client, {
                 guild: interaction.guild,
@@ -285,7 +291,7 @@ async function handleSelectMenu(interaction) {
     if (interaction.customId === "invest_type_select") {
         const selected = interaction.values[0];
         const modal = new discord_js_1.ModalBuilder()
-            .setCustomId(`invest_create_modal_${selected}`) // Pass type in ID
+            .setCustomId(`invest_create_modal_${selected}`)
             .setTitle(`Create ${selected}`);
         const amountInput = new discord_js_1.TextInputBuilder()
             .setCustomId("invest_amount")

@@ -15,9 +15,7 @@ async function handleProfile(message, args) {
         const targetUser = message.mentions.users.first() || message.author;
         if (targetUser.bot)
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Error", "Bots do not have profiles.")] });
-        // 1. Fetch Data
-        // This now returns the full user object including profileTheme
-        const user = await (0, walletService_1.ensureUserAndWallet)(targetUser.id, targetUser.tag);
+        const user = await (0, walletService_1.ensureUserAndWallet)(targetUser.id, message.guildId, targetUser.tag);
         const [inventory, bank, config] = await Promise.all([
             (0, shopService_1.getUserInventory)(targetUser.id, message.guildId),
             (0, bankService_1.getBankByUserId)(user.id),
@@ -26,23 +24,18 @@ async function handleProfile(message, args) {
         const currencyEmoji = config.currencyEmoji;
         const walletBal = user.wallet?.balance ?? 0;
         const bankBal = bank?.balance ?? 0;
-        // 2. Calculate Stats
         const inventoryValue = inventory.reduce((sum, slot) => {
             return sum + (slot.shopItem.price * slot.amount);
         }, 0);
         const netWorth = walletBal + bankBal + inventoryValue;
-        // 3. Generate Image
         let attachment;
         try {
-            // Pass the theme from the user object
-            attachment = await (0, imageService_1.generateProfileImage)({ username: targetUser.username, creditScore: user.creditScore, level: user.level }, walletBal, bankBal, netWorth, targetUser.displayAvatarURL({ extension: "png", size: 256 }), user.profileTheme // Pass theme preference
-            );
+            attachment = await (0, imageService_1.generateProfileImage)({ username: targetUser.username, creditScore: user.creditScore, level: user.level }, walletBal, bankBal, netWorth, targetUser.displayAvatarURL({ extension: "png", size: 256 }), user.profileTheme);
         }
         catch (e) {
             console.error("Canvas Error:", e);
             return message.reply("Failed to generate profile image.");
         }
-        // 4. Create Buttons
         const eWallet = (0, emojiRegistry_1.emojiInline)("wallet", message.guild) || "👛";
         const eInv = (0, emojiRegistry_1.emojiInline)("inventory", message.guild) || "🎒";
         const eGraph = (0, emojiRegistry_1.emojiInline)("graph", message.guild) || "📈";
@@ -56,12 +49,10 @@ async function handleProfile(message, args) {
             .setLabel("Balance")
             .setStyle(discord_js_1.ButtonStyle.Secondary)
             .setEmoji(parseEmojiForButton(eWallet)));
-        // 5. Send Message (Image Only)
         const sentMsg = await message.reply({
             files: [attachment],
             components: [row]
         });
-        // 6. Interaction Collector
         const collector = sentMsg.createMessageComponentCollector({
             componentType: discord_js_1.ComponentType.Button,
             time: 60000,

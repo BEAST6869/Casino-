@@ -7,14 +7,15 @@ exports.handleCasinoBanList = handleCasinoBanList;
 const discord_js_1 = require("discord.js");
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleCasinoBanList(message, args) {
-    if (!message.member?.permissions.has("Administrator")) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Administrator required.")] });
+    if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Administrator or Bot Commander required.")] });
     }
     try {
         const bannedUsers = await prisma_1.default.user.findMany({
             where: { isBanned: true },
-            select: { discordId: true, username: true } // Fetch specific fields
+            select: { discordId: true, username: true }
         });
         if (bannedUsers.length === 0) {
             return message.reply({

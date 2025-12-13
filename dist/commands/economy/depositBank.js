@@ -8,7 +8,7 @@ async function handleDepositBank(message, args) {
     const amount = parseInt(args[0]);
     if (!amount || amount <= 0)
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid", "Enter a valid amount.")] });
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
     try {
         const { actualAmount } = await (0, bankService_1.depositToBank)(user.wallet.id, user.id, amount, message.guildId);
         const updatedBank = await (0, bankService_1.getBankByUserId)(user.id);

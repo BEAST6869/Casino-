@@ -11,34 +11,18 @@ exports.emojiIconUrl = emojiIconUrl;
 exports.emojiInline = emojiInline;
 exports.preferEmojiInlineOrUrl = preferEmojiInlineOrUrl;
 exports.listEmojiKeys = listEmojiKeys;
-// src/utils/emojiRegistry.ts
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-/**
- * Optional manual mapping file. We load it dynamically so the module is optional.
- * If you have `src/config/emojis.ts` exporting `APP_EMOJIS`, it will be used.
- *
- * Example of src/config/emojis.ts:
- * export const APP_EMOJIS = {
- *   coin: { id: "1443857913637507144", name: "coin", animated: false }
- * }
- */
 let APP_EMOJIS = {};
 try {
-    // dynamic require to avoid hard failure if file doesn't exist
-    // note: relative to compiled JS this path may vary; this runs in ts-node/dev so this should work
-    // Prefer `src/config/emojis.ts` (plural) as the canonical filename.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require("../config/emojis");
     if (mod && typeof mod.APP_EMOJIS === "object")
         APP_EMOJIS = mod.APP_EMOJIS;
 }
 catch {
-    // no manual config present — that's fine
 }
 const registry = new Map();
 const DATA_PATH = path_1.default.join(__dirname, "..", "data", "emojis.json");
-/** Read persisted JSON file (safe) */
 function readPersisted() {
     try {
         if (!fs_1.default.existsSync(DATA_PATH))
@@ -51,7 +35,6 @@ function readPersisted() {
         return {};
     }
 }
-/** Persist mapping to JSON */
 function writePersisted(obj) {
     try {
         fs_1.default.mkdirSync(path_1.default.dirname(DATA_PATH), { recursive: true });
@@ -61,17 +44,7 @@ function writePersisted(obj) {
         console.error("emojiRegistry: Failed to write persisted emojis:", e);
     }
 }
-/**
- * Initialize registry:
- * - load APP_EMOJIS (optional manual)
- * - load persisted JSON
- * - discover from client cache
- * - optionally fetch all emojis from EMOJI_GUILD_ID if env set
- *
- * Call once after client 'ready'.
- */
 async function initEmojiRegistry(client) {
-    // 1) manual config
     try {
         if (APP_EMOJIS && typeof APP_EMOJIS === "object") {
             for (const [key, v] of Object.entries(APP_EMOJIS)) {
@@ -82,10 +55,8 @@ async function initEmojiRegistry(client) {
         }
     }
     catch (e) {
-        // continue even if manual config parsing fails
         console.warn("emojiRegistry: failed loading APP_EMOJIS", e);
     }
-    // 2) persisted JSON
     try {
         const persisted = readPersisted();
         for (const [key, rec] of Object.entries(persisted)) {
@@ -96,7 +67,6 @@ async function initEmojiRegistry(client) {
     catch (e) {
         console.warn("emojiRegistry: failed loading persisted emojis", e);
     }
-    // 3) discover currently cached emojis (app + guilds)
     try {
         client.emojis.cache.forEach((e) => {
             if (!registry.has(e.name))
@@ -106,13 +76,11 @@ async function initEmojiRegistry(client) {
     catch (e) {
         console.warn("emojiRegistry: error discovering client emoji cache", e);
     }
-    // 4) optionally: fetch emojis from storage guild (if provided)
     const storGuildId = process.env.EMOJI_GUILD_ID;
     if (storGuildId) {
         try {
             const guild = client.guilds.cache.get(storGuildId) ?? (await client.guilds.fetch(storGuildId).catch(() => null));
             if (guild) {
-                // ensure guild emojis cached
                 await guild.emojis.fetch().catch(() => null);
                 guild.emojis.cache.forEach((e) => {
                     if (!registry.has(e.name))
@@ -128,20 +96,17 @@ async function initEmojiRegistry(client) {
         }
     }
 }
-/** Persist a mapping (also writes to JSON) */
 function setPersistedEmoji(key, rec) {
     try {
         const obj = readPersisted();
         obj[key] = rec;
         writePersisted(obj);
-        // update in-memory registry immediately
         registry.set(key, rec);
     }
     catch (e) {
         console.error("emojiRegistry: failed to persist emoji mapping:", e);
     }
 }
-/** Basic getters */
 function getEmojiRecord(key) {
     return registry.get(key);
 }
@@ -157,7 +122,6 @@ function emojiIconUrl(key) {
         return undefined;
     return emojiCdnUrl(r.id, !!r.animated);
 }
-/** Inline only allowed if emoji exists in the target guild */
 function emojiInline(key, guild) {
     const r = getEmojiRecord(key);
     if (!r || !guild)
@@ -167,7 +131,6 @@ function emojiInline(key, guild) {
         return undefined;
     return found.animated ? `<a:${found.name}:${found.id}>` : `<:${found.name}:${found.id}>`;
 }
-/** prefer inline else url */
 function preferEmojiInlineOrUrl(key, guild) {
     const inline = emojiInline(key, guild);
     if (inline)

@@ -3,13 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleDeposit = handleDeposit;
 const walletService_1 = require("../../services/walletService");
 const bankService_1 = require("../../services/bankService");
-const guildConfigService_1 = require("../../services/guildConfigService"); // Cached Config
+const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
 const discordLogger_1 = require("../../utils/discordLogger");
 async function handleDeposit(message, args) {
-    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.author.tag);
-    // 1. Fetch Config (Instant Cache)
+    const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const emoji = config.currencyEmoji;
     const wallet = user.wallet;
@@ -23,20 +22,9 @@ async function handleDeposit(message, args) {
     }
     try {
         const { bank, actualAmount } = await (0, bankService_1.depositToBank)(wallet.id, user.id, amount, message.guildId);
-        // Refresh bank used to be handled by getBankByUserId but now we likely have updated bank or can fetch if needed, 
-        // but the return object 'bank' is the *pre-update* object + transaction updates it. 
-        // Actually Prisma update returns the new object. In bankService we returned 'bank' which was the *found* object, not the updated one.
-        // Wait, in my bankService update:
-        /*
-           prisma.bank.update(...) is inside transaction.
-           The function likely returns 'bank' which is the OLD object because we just did 'const bank = await ensureBank'.
-           We should probably fetch the new balance or just add actualAmount to the old balance for display.
-           Or better, let's fetch it freshly to be 100% sure.
-        */
         const updatedBank = await (0, bankService_1.getBankByUserId)(user.id);
         const isPartial = actualAmount < amount;
         const partialMsg = isPartial ? ` (Partial Deposit - Bank Limit Reached)` : "";
-        // Log Deposit
         await (0, discordLogger_1.logToChannel)(message.client, {
             guild: message.guild,
             type: "ECONOMY",

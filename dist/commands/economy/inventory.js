@@ -14,17 +14,15 @@ async function handleInventory(message, args) {
         if (targetUser.bot) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Error", "Bots cannot hold items.")] });
         }
-        await (0, walletService_1.ensureUserAndWallet)(targetUser.id, targetUser.tag);
+        await (0, walletService_1.ensureUserAndWallet)(targetUser.id, message.guildId, targetUser.tag);
         const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
         let emoji = config.currencyEmoji;
-        // Emoji Resolution
         if (/^\d+$/.test(emoji)) {
             const resolved = message.guild?.emojis.cache.get(emoji);
             emoji = resolved ? resolved.toString() : "💰";
         }
         const items = await (0, shopService_1.getUserInventory)(targetUser.id, message.guildId);
         const eInv = (0, emojiRegistry_1.emojiInline)("inventory", message.guild) || "🎒";
-        // 1. Empty Inventory
         if (items.length === 0) {
             const emptyEmbed = new discord_js_1.EmbedBuilder()
                 .setTitle(`${eInv} ${targetUser.username}'s Inventory`)
@@ -33,16 +31,12 @@ async function handleInventory(message, args) {
                 .setTimestamp();
             return message.reply({ embeds: [emptyEmbed] });
         }
-        // 2. Net Worth
         const netWorth = items.reduce((sum, slot) => sum + (slot.shopItem.price * slot.amount), 0);
-        // 3. Build Select Menu Options
-        // Limit to 25 items for Select Menu (Discord Limit)
         const options = items.slice(0, 25).map(slot => ({
             label: `${slot.shopItem.name} (x${slot.amount})`,
             description: `Value: ${(0, format_1.fmtAmount)(slot.shopItem.price)} | Quick Sell: ${(0, format_1.fmtAmount)(Math.floor(slot.shopItem.price * 0.5))}`,
             value: slot.shopItem.id
         }));
-        // 4. Build Embed
         const displayItems = items.slice(0, 15);
         const description = displayItems.map((slot, index) => {
             const item = slot.shopItem;
@@ -60,9 +54,7 @@ async function handleInventory(message, args) {
         })
             .setFooter({ text: "Select an item below to Sell, Trade, or List." })
             .setTimestamp();
-        // 5. Components
         const rows = [];
-        // Only show menu if it's the user's OWN inventory (can't manage others)
         if (targetUser.id === message.author.id) {
             const menu = new discord_js_1.StringSelectMenuBuilder()
                 .setCustomId("inv_select_item")

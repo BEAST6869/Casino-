@@ -11,7 +11,6 @@ const walletService_1 = require("../services/walletService");
 const discordLogger_1 = require("../utils/discordLogger");
 const guildConfigService_1 = require("../services/guildConfigService");
 const format_1 = require("../utils/format");
-// CUSTOM EMOJIS
 const EMOJI_TRADE = "<:trade:1447255517440508108>";
 const EMOJI_LIGHTNING = "<a:lightning:1447254938261651630>";
 const EMOJI_ACCEPT = "<a:acceptt:1447255696411197501>";
@@ -21,12 +20,10 @@ async function handleInventoryInteraction(interaction) {
     const { customId, user, guildId } = interaction;
     if (!guildId)
         return;
-    // --- 1. SELECT ITEM (Drop Down) ---
     if (interaction.isStringSelectMenu() && customId === "inv_select_item") {
         const itemId = interaction.values[0];
-        // Fetch Item Details
         const inventoryItem = await prisma_1.default.inventory.findUnique({
-            where: { userId_shopItemId: { userId: (await prisma_1.default.user.findUnique({ where: { discordId: user.id } }))?.id, shopItemId: itemId } },
+            where: { userId_shopItemId: { userId: (await prisma_1.default.user.findUnique({ where: { discordId_guildId: { discordId: user.id, guildId } } }))?.id, shopItemId: itemId } },
             include: { shopItem: true }
         });
         if (!inventoryItem) {
@@ -42,11 +39,10 @@ async function handleInventoryInteraction(interaction) {
         const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId(`inv_sell_${item.id}`).setLabel("Quick Sell (50%)").setStyle(discord_js_1.ButtonStyle.Danger).setEmoji(EMOJI_LIGHTNING), new discord_js_1.ButtonBuilder().setCustomId(`inv_market_${item.id}`).setLabel("List on Market").setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji(EMOJI_BLACKMARKET), new discord_js_1.ButtonBuilder().setCustomId(`inv_req_trade_${item.id}`).setLabel("Trade / Gift").setStyle(discord_js_1.ButtonStyle.Success).setEmoji(EMOJI_TRADE));
         await interaction.update({ embeds: [embed], components: [row] });
     }
-    // --- 2. QUICK SELL ---
     if (interaction.isButton() && customId.startsWith("inv_sell_")) {
         const itemId = customId.replace("inv_sell_", "");
         try {
-            const dbUser = await prisma_1.default.user.findUnique({ where: { discordId: user.id }, include: { wallet: true } });
+            const dbUser = await prisma_1.default.user.findUnique({ where: { discordId_guildId: { discordId: user.id, guildId } }, include: { wallet: true } });
             if (!dbUser)
                 return;
             const inv = await prisma_1.default.inventory.findUnique({
@@ -71,7 +67,6 @@ async function handleInventoryInteraction(interaction) {
             await interaction.reply({ content: "Error selling item.", ephemeral: true });
         }
     }
-    // --- 3. MARKET LISTING ---
     if (interaction.isButton() && customId.startsWith("inv_market_")) {
         const itemId = customId.replace("inv_market_", "");
         const modal = new discord_js_1.ModalBuilder()
@@ -92,7 +87,6 @@ async function handleInventoryInteraction(interaction) {
         modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(priceInput), new discord_js_1.ActionRowBuilder().addComponents(amountInput));
         await interaction.showModal(modal);
     }
-    // --- 4. TRADE SETUP (Button -> Modal) ---
     if (interaction.isButton() && customId.startsWith("inv_req_trade_")) {
         const itemId = customId.replace("inv_req_trade_", "");
         const modal = new discord_js_1.ModalBuilder()
@@ -113,7 +107,6 @@ async function handleInventoryInteraction(interaction) {
         modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(userInput), new discord_js_1.ActionRowBuilder().addComponents(priceInput));
         await interaction.showModal(modal);
     }
-    // --- 5. TRADE SUBMISSION (Modal -> Request Embed) ---
     if (interaction.isModalSubmit() && customId.startsWith("inv_trade_modal_")) {
         const itemId = customId.replace("inv_trade_modal_", "");
         const targetId = interaction.fields.getTextInputValue("target_user");
@@ -125,7 +118,7 @@ async function handleInventoryInteraction(interaction) {
         const targetUser = await interaction.client.users.fetch(targetId).catch(() => null);
         if (!targetUser)
             return interaction.reply({ content: "User not found or invalid ID.", ephemeral: true });
-        const dbUser = await prisma_1.default.user.findUnique({ where: { discordId: user.id } });
+        const dbUser = await prisma_1.default.user.findUnique({ where: { discordId_guildId: { discordId: user.id, guildId } } });
         const inv = await prisma_1.default.inventory.findUnique({
             where: { userId_shopItemId: { userId: dbUser?.id, shopItemId: itemId } },
             include: { shopItem: true }
@@ -143,7 +136,6 @@ async function handleInventoryInteraction(interaction) {
             await interaction.channel.send({ content: `<@${targetId}>`, embeds: [embed], components: [row] });
         }
     }
-    // --- 6. TRADE EXECUTION (Accept Button) ---
     if (interaction.isButton() && customId.startsWith("inv_trade_accept_")) {
         const parts = customId.split("_");
         const sellerId = parts[3];
@@ -153,10 +145,8 @@ async function handleInventoryInteraction(interaction) {
             return interaction.reply({ content: "This trade is not for you!", ephemeral: true });
         }
         try {
-            // Ensure buyer exists in DB
-            await (0, walletService_1.ensureUserAndWallet)(interaction.user.id, interaction.user.tag);
-            const result = await (0, tradeService_1.executeTrade)(sellerId, interaction.user.id, itemId, 1, price);
-            // Log Trade
+            await (0, walletService_1.ensureUserAndWallet)(interaction.user.id, guildId, interaction.user.tag);
+            const result = await (0, tradeService_1.executeTrade)(guildId, sellerId, interaction.user.id, itemId, 1, price);
             const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
             await (0, discordLogger_1.logToChannel)(interaction.client, {
                 guild: interaction.guild,
@@ -175,7 +165,6 @@ async function handleInventoryInteraction(interaction) {
             await interaction.reply({ content: `Trade Failed: ${err.message}`, ephemeral: true });
         }
     }
-    // --- 7. TRADE DECLINE ---
     if (interaction.isButton() && customId.startsWith("inv_trade_decline_")) {
         const sellerId = customId.split("_")[3];
         const isTarget = interaction.message.content.includes(interaction.user.id);

@@ -10,14 +10,12 @@ async function handleAskInteraction(interaction) {
     if (!interaction.guild)
         return;
     const [action, requesterId, amountStr] = interaction.customId.split(":");
-    // Security check: Only the user mentioned in the message text can click
     const mentionMatch = interaction.message.content.match(/<@!?(\d+)>/);
     const targetUserId = mentionMatch ? mentionMatch[1] : null;
     if (!targetUserId || interaction.user.id !== targetUserId) {
         return interaction.reply({ content: "🚫 This request is not for you.", ephemeral: true });
     }
     try {
-        // Defer update immediately to prevent "Unknown interaction" timeout errors
         await interaction.deferUpdate();
         if (action === "ask_decline") {
             const embed = discord_js_1.EmbedBuilder.from(interaction.message.embeds[0])
@@ -36,7 +34,6 @@ async function handleAskInteraction(interaction) {
         if (action === "ask_accept") {
             const amount = parseInt(amountStr);
             try {
-                // Perform the transfer
                 await (0, walletService_1.transferMoney)(interaction.user.id, requesterId, amount, interaction.guildId);
                 const embed = discord_js_1.EmbedBuilder.from(interaction.message.embeds[0])
                     .setColor(0x00FF00)
@@ -51,8 +48,6 @@ async function handleAskInteraction(interaction) {
                 });
             }
             catch (error) {
-                // If transfer fails, we can't use reply() because we already deferred.
-                // We use followUp() to send a new ephemeral error message.
                 if (error.message === "Insufficient funds.") {
                     return interaction.followUp({ content: "❌ You do not have enough funds in your **wallet** to fulfill this request.", ephemeral: true });
                 }
@@ -62,8 +57,6 @@ async function handleAskInteraction(interaction) {
     }
     catch (err) {
         console.error("Ask interaction error:", err);
-        // If defer failed or something else, let it bubble or safeReply will handle it 
-        // (safeReply is now updated to ignore 10062 errors)
     }
 }
 //# sourceMappingURL=askInteractionHandler.js.map

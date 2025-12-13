@@ -8,11 +8,12 @@ const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
 const guildConfigService_1 = require("../../services/guildConfigService");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 const SUPPORTED = ["work", "beg", "crime", "slut"];
 async function handleSetIncome(message, args) {
     try {
-        if (!message.member?.permissions.has("Administrator")) {
-            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins only.")] });
+        if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins or Bot Commanders only.")] });
         }
         const cmd = (args[0] ?? "").toLowerCase();
         const field = (args[1] ?? "").toLowerCase();
@@ -22,12 +23,10 @@ async function handleSetIncome(message, args) {
                 embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setincome < work | beg | crime | slut > <min|max|cooldown|success|penalty> <value>`")]
             });
         }
-        // parse value
         const val = (0, format_1.parseSmartAmount)(raw);
         if (isNaN(val)) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Value", "Value must be a number (e.g. 50, 1k).")] });
         }
-        // validation per field
         const updates = {};
         if (field === "min") {
             if (!Number.isInteger(val) || val < 0)

@@ -5,10 +5,8 @@ exports.infoEmbed = infoEmbed;
 exports.successEmbed = successEmbed;
 exports.errorEmbed = errorEmbed;
 exports.balanceEmbed = balanceEmbed;
-// src/utils/embed.ts
 const discord_js_1 = require("discord.js");
 const format_1 = require("./format");
-// ... keep baseEmbed, infoEmbed, successEmbed, errorEmbed as they were ...
 function baseEmbed(user) {
     const embed = new discord_js_1.EmbedBuilder()
         .setColor(discord_js_1.Colors.Blurple)
@@ -31,8 +29,6 @@ function successEmbed(user, title, desc) {
 function errorEmbed(user, title, desc) {
     return baseEmbed(user).setColor(discord_js_1.Colors.Red).setTitle(title).setDescription(desc ?? "");
 }
-// UPDATED: Now accepts 'emoji' string
-// UPDATED: Now accepts limits
 function balanceEmbed(user, wallet, bank, emoji, walletLimit, bankLimit) {
     const formatField = (amount, limit) => {
         const amtStr = (0, format_1.fmtCurrency)(amount, emoji);

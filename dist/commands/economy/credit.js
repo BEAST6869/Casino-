@@ -7,18 +7,17 @@ const guildConfigService_1 = require("../../services/guildConfigService");
 const format_1 = require("../../utils/format");
 async function handleCredit(message, args) {
     const targetUser = message.mentions.users.first() || message.author;
-    const userSummary = await (0, bankingService_1.getFinancialSummary)(targetUser.id);
+    const userSummary = await (0, bankingService_1.getFinancialSummary)(targetUser.id, message.guildId);
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const limits = (0, bankingService_1.calculateCreditLimits)(userSummary.creditScore, config);
     const emoji = config.currencyEmoji;
-    // Visuals for score
-    let scoreColor = 0xFF0000; // Red
+    let scoreColor = 0xFF0000;
     if (userSummary.creditScore >= 500)
-        scoreColor = 0xFFA500; // Orange
+        scoreColor = 0xFFA500;
     if (userSummary.creditScore >= 700)
-        scoreColor = 0x00FF00; // Green
+        scoreColor = 0x00FF00;
     if (userSummary.creditScore >= 900)
-        scoreColor = 0x00FFFF; // Cyan
+        scoreColor = 0x00FFFF;
     const embed = new discord_js_1.EmbedBuilder()
         .setTitle(`<a:credits:1445689337172721716> Credit Profile: ${targetUser.username}`)
         .setColor(scoreColor)

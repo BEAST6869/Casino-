@@ -34,7 +34,7 @@ async function handleAsk(message, args) {
         .setTitle(`💸 Money Request`)
         .setDescription(`**${message.author.username}** is asking **${targetUser.username}** for money.`)
         .addFields({ name: "Amount", value: `${(0, format_1.fmtCurrency)(amount, config.currencyEmoji)}`, inline: true }, { name: "Reason", value: reason, inline: true })
-        .setColor(0xFFFF00) // Yellow
+        .setColor(0xFFFF00)
         .setFooter({ text: "Click Accept to transfer immediately." });
     const row = new discord_js_1.ActionRowBuilder()
         .addComponents(new discord_js_1.ButtonBuilder()

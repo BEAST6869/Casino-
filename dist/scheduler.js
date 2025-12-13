@@ -7,14 +7,11 @@ exports.initScheduler = initScheduler;
 const node_cron_1 = __importDefault(require("node-cron"));
 const bankingService_1 = require("./services/bankingService");
 function initScheduler(client) {
-    // Run every day at midnight
     node_cron_1.default.schedule("* * * * *", async () => {
         console.log("🕒 Running daily banking jobs...");
         try {
-            // 1. Process Investments
             const processedCount = await (0, bankingService_1.processAllInvestments)();
             console.log(`✅ Processed ${processedCount} matured investments.`);
-            // 2. Process Overdue Loans
             const loanCount = await (0, bankingService_1.processOverdueLoans)(client);
             if (loanCount > 0) {
                 console.log(`✅ Processed ${loanCount} overdue loans.`);

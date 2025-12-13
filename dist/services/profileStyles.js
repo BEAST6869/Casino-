@@ -18,7 +18,6 @@ exports.drawMidnightPrism = drawMidnightPrism;
 exports.drawRankCard = drawRankCard;
 exports.getProfileStyle = getProfileStyle;
 const canvas_1 = require("canvas");
-// Helper: Rounded Rect
 function drawRoundedRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -32,7 +31,6 @@ function drawRoundedRect(ctx, x, y, w, h, r) {
     ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
 }
-// Helper: Draw Avatar with options
 async function drawAvatar(ctx, url, x, y, size, border = true, borderColor = "#fff") {
     ctx.save();
     ctx.beginPath();
@@ -56,16 +54,12 @@ async function drawAvatar(ctx, url, x, y, size, border = true, borderColor = "#f
         ctx.stroke();
     }
 }
-// --- GROUP A: CLASSIC UPGRADED ---
-// 1. Neon Noir (Cyberpunk) -> UPGRADED
 async function drawNeonNoir(ctx, width, height, data) {
-    // Deep Dark Blue/Pink Gradient
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#090910");
     grad.addColorStop(1, "#1a0b2e");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // Dynamic Grid (Perspective)
     ctx.strokeStyle = "rgba(255, 0, 255, 0.2)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -78,7 +72,6 @@ async function drawNeonNoir(ctx, width, height, data) {
         ctx.lineTo(width, i);
     }
     ctx.stroke();
-    // Glowing main frame
     ctx.shadowBlur = 20;
     ctx.shadowColor = "#FF00FF";
     ctx.strokeStyle = "#FF00FF";
@@ -86,24 +79,19 @@ async function drawNeonNoir(ctx, width, height, data) {
     drawRoundedRect(ctx, 30, 30, width - 60, height - 60, 20);
     ctx.stroke();
     ctx.shadowBlur = 0;
-    // Avatar
     await drawAvatar(ctx, data.avatarUrl, 70, 70, 110, true, "#00FFFF");
-    // Username with Neon Glow
     ctx.shadowBlur = 10;
     ctx.shadowColor = "#00FFFF";
     ctx.fillStyle = "#fff";
     ctx.font = "bold 44px 'Segoe UI', sans-serif";
     ctx.fillText(data.username, 210, 100);
     ctx.shadowBlur = 0;
-    // LEVEL
     ctx.font = "bold 24px 'Courier New', monospace";
     ctx.fillStyle = "#FF00FF";
     ctx.fillText(`LEVEL ${data.level}`, 210, 130);
-    // Credit Score
     ctx.fillStyle = "#00FFFF";
     ctx.font = "18px 'Courier New', monospace";
     ctx.fillText(`CREDIT_SYS_V2 // [${data.creditScore}]`, 210, 155);
-    // Stats Bar
     const stats = [
         { l: "WALLET", v: data.wallet, c: "#FF00FF" },
         { l: "BANK", v: data.bank, c: "#00FFFF" },
@@ -111,10 +99,8 @@ async function drawNeonNoir(ctx, width, height, data) {
     ];
     let x = 60;
     stats.forEach((s) => {
-        // Futuristic Box
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
         ctx.fillRect(x, 260, 220, 120);
-        // Neon Accent Line
         ctx.fillStyle = s.c;
         ctx.fillRect(x, 260, 220, 4);
         ctx.font = "bold 20px 'Courier New', monospace";
@@ -125,16 +111,13 @@ async function drawNeonNoir(ctx, width, height, data) {
         x += 240;
     });
 }
-// 2. Sunset Miami (Synthwave) -> UPGRADED
 async function drawSunsetMiami(ctx, width, height, data) {
-    // Vaporwave Gradient
     const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, "#240046"); // Deep purple
+    grad.addColorStop(0, "#240046");
     grad.addColorStop(0.5, "#7b2cbf");
-    grad.addColorStop(1, "#ff9e00"); // Orange
+    grad.addColorStop(1, "#ff9e00");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // The Sun
     ctx.save();
     const sunGrad = ctx.createLinearGradient(0, 100, 0, 400);
     sunGrad.addColorStop(0, "#ffd60a");
@@ -143,26 +126,22 @@ async function drawSunsetMiami(ctx, width, height, data) {
     ctx.beginPath();
     ctx.arc(width / 2, 360, 200, 0, Math.PI * 2);
     ctx.fill();
-    // Sun slats (Horizontal cuts)
     ctx.fillStyle = "rgba(0,0,0,0.3)";
     for (let i = 260; i < 560; i += 20)
         ctx.fillRect(width / 2 - 200, i, 400, 6);
     ctx.restore();
-    // Perspective Grid Floor
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, height / 2 + 50, width, height / 2);
     ctx.clip();
     ctx.strokeStyle = "rgba(255, 0, 217, 0.5)";
     ctx.lineWidth = 2;
-    // Vertical lines
     for (let i = -width; i < width * 2; i += 40) {
         ctx.beginPath();
         ctx.moveTo(i, height / 2 + 50);
         ctx.lineTo((i - width / 2) * 5 + width / 2, height);
         ctx.stroke();
     }
-    // Horizontal lines
     for (let i = height / 2 + 50; i < height; i += 30) {
         ctx.beginPath();
         ctx.moveTo(0, i);
@@ -170,15 +149,12 @@ async function drawSunsetMiami(ctx, width, height, data) {
         ctx.stroke();
     }
     ctx.restore();
-    // Palm Tree Silhouettes (Simplified)
-    // Left
     ctx.fillStyle = "#10002b";
     ctx.beginPath();
     ctx.moveTo(50, height);
     ctx.lineTo(60, height - 200);
     ctx.lineTo(80, height);
     ctx.fill();
-    // Content
     await drawAvatar(ctx, data.avatarUrl, 60, 60, 110, true, "#ff006e");
     ctx.shadowColor = "#ff006e";
     ctx.shadowBlur = 10;
@@ -198,7 +174,6 @@ async function drawSunsetMiami(ctx, width, height, data) {
     const labels = ["CASH", "BANK", "NET"];
     let x = 60;
     stats.forEach((v, i) => {
-        // Semi-transparent boxes
         ctx.fillStyle = "rgba(16, 0, 43, 0.8)";
         drawRoundedRect(ctx, x, 270, 220, 100, 10);
         ctx.fill();
@@ -215,24 +190,19 @@ async function drawSunsetMiami(ctx, width, height, data) {
         x += 240;
     });
 }
-// 3. Samurai / Ronin -> UPGRADED
 async function drawSamurai(ctx, width, height, data) {
-    // Parchment Texture Background
     ctx.fillStyle = "#f4ecd8";
     ctx.fillRect(0, 0, width, height);
-    // Ink Splatters (Simulated)
     ctx.fillStyle = "rgba(0,0,0,0.8)";
     for (let i = 0; i < 5; i++) {
         ctx.beginPath();
         ctx.arc(Math.random() * width, Math.random() * height, Math.random() * 40, 0, Math.PI * 2);
         ctx.fill();
     }
-    // Red Sun (Crisp)
     ctx.fillStyle = "#d00000";
     ctx.beginPath();
     ctx.arc(680, 120, 90, 0, Math.PI * 2);
     ctx.fill();
-    // Large Brush Stroke across middle
     ctx.fillStyle = "#111";
     ctx.beginPath();
     ctx.moveTo(-50, 220);
@@ -240,13 +210,10 @@ async function drawSamurai(ctx, width, height, data) {
     ctx.lineTo(width + 20, 250);
     ctx.lineTo(-20, 270);
     ctx.fill();
-    // Content
     await drawAvatar(ctx, data.avatarUrl, 60, 60, 120, true, "#d00000");
-    // Typography (Brush style simulation)
     ctx.fillStyle = "#111";
-    ctx.font = "bold 40px 'Segoe UI', sans-serif"; // Would use a brush font if available
+    ctx.font = "bold 40px 'Segoe UI', sans-serif";
     ctx.fillText(data.username, 200, 100);
-    // Red seal for Level
     ctx.fillStyle = "#d00000";
     ctx.beginPath();
     ctx.arc(220, 140, 25, 0, Math.PI * 2);
@@ -266,60 +233,48 @@ async function drawSamurai(ctx, width, height, data) {
     ];
     let x = 60;
     stats.forEach(s => {
-        // Vertical divider layout
-        // Label
         ctx.fillStyle = "#666";
         ctx.font = "bold 20px 'Segoe UI', sans-serif";
         ctx.fillText(s.l.toUpperCase(), x, 320);
-        // Value
         ctx.fillStyle = "#000";
         ctx.font = "bold 32px 'Segoe UI', sans-serif";
         ctx.fillText(s.v, x, 360);
-        // Red vertical line separator
         ctx.fillStyle = "#d00000";
         ctx.fillRect(x + 200, 310, 2, 70);
         x += 240;
     });
 }
-// 4. Egyptian Pharaoh -> UPGRADED
 async function drawEgyptian(ctx, width, height, data) {
-    // Sandstone Gold Dark
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#1c1c1c");
     grad.addColorStop(1, "#3f3f3f");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // Gold Bezel Border
     const goldGrad = ctx.createLinearGradient(0, 0, width, 0);
     goldGrad.addColorStop(0, "#bf953f");
-    goldGrad.addColorStop(0.5, "#fbf5b7"); // light gold
+    goldGrad.addColorStop(0.5, "#fbf5b7");
     goldGrad.addColorStop(1, "#bf953f");
     ctx.lineWidth = 15;
     ctx.strokeStyle = goldGrad;
     ctx.strokeRect(20, 20, width - 40, height - 40);
-    // Inner Hieroglyph Pattern (Subtle)
     ctx.fillStyle = "rgba(251, 245, 183, 0.05)";
     for (let i = 40; i < width - 40; i += 60) {
         ctx.fillRect(i, 40, 30, height - 80);
     }
-    // Avatar
     await drawAvatar(ctx, data.avatarUrl, 70, 70, 120, true, "#fbf5b7");
-    // Title
     ctx.fillStyle = "#fbf5b7";
     ctx.font = "bold 40px 'Segoe UI', sans-serif";
     ctx.fillText(data.username.toUpperCase(), 220, 100);
     ctx.fillStyle = "#bf953f";
     ctx.font = "bold 24px 'Segoe UI', sans-serif";
     ctx.fillText(`PHARAOH LEVEL ${data.level}`, 220, 135);
-    ctx.fillStyle = "#40e0d0"; // Turquoise
+    ctx.fillStyle = "#40e0d0";
     ctx.font = "18px 'Segoe UI', sans-serif";
     ctx.fillText(`DYNASTY: ${data.creditScore}`, 220, 160);
-    // Stats Columns
     const stats = [data.wallet, data.bank, data.net];
     const labels = ["TREASURY", "VAULT", "EMPIRE"];
     let x = 70;
     stats.forEach((v, i) => {
-        // Gold underlined
         ctx.fillStyle = "#bf953f";
         ctx.font = "bold 18px 'Segoe UI', sans-serif";
         ctx.fillText(labels[i], x, 280);
@@ -330,16 +285,12 @@ async function drawEgyptian(ctx, width, height, data) {
         x += 240;
     });
 }
-// --- GROUP B: ELEMENTAL UPGRADED ---
-// 5. Frozen / Ice Core -> UPGRADED
 async function drawFrozen(ctx, width, height, data) {
-    // Deep Ice Gradient
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#001219");
     grad.addColorStop(1, "#005f73");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // Frost Particles
     ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
     for (let i = 0; i < 50; i++) {
         const size = Math.random() * 4;
@@ -347,7 +298,6 @@ async function drawFrozen(ctx, width, height, data) {
         ctx.arc(Math.random() * width, Math.random() * height, size, 0, Math.PI * 2);
         ctx.fill();
     }
-    // Ice Shards Top/Bottom
     ctx.fillStyle = "rgba(164, 223, 247, 0.2)";
     ctx.beginPath();
     ctx.moveTo(0, 0);
@@ -359,7 +309,6 @@ async function drawFrozen(ctx, width, height, data) {
     ctx.lineTo(width - 400, height);
     ctx.lineTo(width - 150, height - 200);
     ctx.fill();
-    // Glass/Ice Container
     ctx.save();
     ctx.strokeStyle = "rgba(255,255,255,0.4)";
     ctx.lineWidth = 2;
@@ -367,13 +316,12 @@ async function drawFrozen(ctx, width, height, data) {
     drawRoundedRect(ctx, 40, 40, width - 80, height - 80, 20);
     ctx.fill();
     ctx.stroke();
-    // Frost overlay on container
     ctx.clip();
     ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-    ctx.fillRect(40, 40, width - 80, 150); // Top half extra frost
+    ctx.fillRect(40, 40, width - 80, 150);
     ctx.restore();
     await drawAvatar(ctx, data.avatarUrl, 70, 70, 120, true, "#e9d8a6");
-    ctx.fillStyle = "#e9d8a6"; // Champagne Gold for contrast
+    ctx.fillStyle = "#e9d8a6";
     ctx.font = "bold 44px 'Segoe UI', sans-serif";
     ctx.fillText(data.username, 220, 100);
     ctx.fillStyle = "#94d2bd";
@@ -383,9 +331,8 @@ async function drawFrozen(ctx, width, height, data) {
     ctx.fillText(`FROST RATING: ${data.creditScore}`, 220, 160);
     const stats = [data.wallet, data.bank, data.net];
     const labels = ["LIQUID", "FROZEN", "TOTAL"];
-    let x = 55; // Adjusted indentation
+    let x = 55;
     stats.forEach((v, i) => {
-        // Icicle hanging layout
         ctx.fillStyle = "rgba(255,255,255,0.1)";
         ctx.fillRect(x, 260, 210, 100);
         ctx.fillStyle = "#94d2bd";
@@ -397,21 +344,17 @@ async function drawFrozen(ctx, width, height, data) {
         x += 240;
     });
 }
-// 6. Inferno / Hellfire -> UPGRADED
 async function drawInferno(ctx, width, height, data) {
-    // Magma Gradient
     const grad = ctx.createLinearGradient(0, height, 0, 0);
     grad.addColorStop(0, "#370617");
     grad.addColorStop(1, "#6a040f");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // Fire Glow from bottom
     const fireGrad = ctx.createLinearGradient(0, height, 0, height / 2);
     fireGrad.addColorStop(0, "rgba(255, 186, 8, 0.4)");
     fireGrad.addColorStop(1, "rgba(208, 0, 0, 0)");
     ctx.fillStyle = fireGrad;
     ctx.fillRect(0, 0, width, height);
-    // Ember Particles
     ctx.fillStyle = "#ffba08";
     ctx.shadowBlur = 10;
     ctx.shadowColor = "#e85d04";
@@ -422,12 +365,10 @@ async function drawInferno(ctx, width, height, data) {
         ctx.fill();
     }
     ctx.shadowBlur = 0;
-    // Charred Border
     ctx.strokeStyle = "#370617";
     ctx.lineWidth = 10;
     drawRoundedRect(ctx, 20, 20, width - 40, height - 40, 15);
     ctx.stroke();
-    // Burning inner border
     ctx.strokeStyle = "#dc2f02";
     ctx.lineWidth = 2;
     drawRoundedRect(ctx, 25, 25, width - 50, height - 50, 10);
@@ -444,7 +385,6 @@ async function drawInferno(ctx, width, height, data) {
     const stats = [data.wallet, data.bank, data.net];
     let x = 70;
     stats.forEach((v, i) => {
-        // Burnt paper cards
         ctx.fillStyle = "rgba(0,0,0,0.4)";
         drawRoundedRect(ctx, x, 260, 210, 100, 5);
         ctx.fill();
@@ -457,12 +397,9 @@ async function drawInferno(ctx, width, height, data) {
         x += 240;
     });
 }
-// 7. Joker / Chaos -> UPGRADED
 async function drawJoker(ctx, width, height, data) {
-    // Chaos Purple Background
     ctx.fillStyle = "#240046";
     ctx.fillRect(0, 0, width, height);
-    // HA HA HA Pattern
     ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
     ctx.font = "bold 30px 'Courier New', monospace";
     ctx.save();
@@ -473,7 +410,6 @@ async function drawJoker(ctx, width, height, data) {
         }
     }
     ctx.restore();
-    // Paint Splatters
     ctx.fillStyle = "#7209b7";
     for (let i = 0; i < 10; i++) {
         ctx.beginPath();
@@ -481,21 +417,19 @@ async function drawJoker(ctx, width, height, data) {
         ctx.fill();
     }
     await drawAvatar(ctx, data.avatarUrl, 70, 50, 120, true, "#00ff00");
-    // Tilted Name
     ctx.save();
     ctx.rotate(-0.05);
     ctx.fillStyle = "#e0aaff";
     ctx.font = "bold 48px 'Segoe UI', sans-serif";
     ctx.fillText(data.username, 210, 120);
     ctx.restore();
-    ctx.fillStyle = "#00ff00"; // Toxic Green
+    ctx.fillStyle = "#00ff00";
     ctx.font = "24px 'Courier New', monospace";
     ctx.fillText(`LVL:${data.level} CHAOS:${data.creditScore}`, 220, 160);
     const stats = [data.wallet, data.bank, data.net];
-    const colors = ["#ff006e", "#3a86ff", "#ffbe0b"]; // Pink, Blue, Yellow
+    const colors = ["#ff006e", "#3a86ff", "#ffbe0b"];
     let x = 70;
     stats.forEach((v, i) => {
-        // Tilted chaotic cards
         ctx.save();
         ctx.translate(x + 105, 310);
         ctx.rotate((Math.random() - 0.5) * 0.2);
@@ -513,15 +447,12 @@ async function drawJoker(ctx, width, height, data) {
         x += 240;
     });
 }
-// 8. Cosmic / Galaxy -> UPGRADED
 async function drawCosmic(ctx, width, height, data) {
-    // Deep Space
     const grad = ctx.createRadialGradient(width / 2, height / 2, 100, width / 2, height / 2, 500);
     grad.addColorStop(0, "#240046");
     grad.addColorStop(1, "#10002b");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // Stars
     ctx.fillStyle = "#fff";
     for (let i = 0; i < 200; i++) {
         const r = Math.random() < 0.9 ? Math.random() * 2 : Math.random() * 4;
@@ -531,7 +462,6 @@ async function drawCosmic(ctx, width, height, data) {
         ctx.fill();
     }
     ctx.globalAlpha = 1;
-    // Nebula Ring
     ctx.strokeStyle = "rgba(67, 97, 238, 0.5)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -552,7 +482,6 @@ async function drawCosmic(ctx, width, height, data) {
     const stats = [data.wallet, data.bank, data.net];
     let x = 70;
     stats.forEach((v, i) => {
-        // Holographic HUD panels
         ctx.fillStyle = "rgba(67, 97, 238, 0.1)";
         ctx.strokeStyle = "#4cc9f0";
         ctx.lineWidth = 1;
@@ -568,13 +497,9 @@ async function drawCosmic(ctx, width, height, data) {
         x += 240;
     });
 }
-// --- GROUP C: MATERIAL UPGRADED ---
-// 9. Steampunk Gold -> UPGRADED
 async function drawSteampunk(ctx, width, height, data) {
-    // Leather Pattern
     ctx.fillStyle = "#3e2723";
     ctx.fillRect(0, 0, width, height);
-    // Brass Gears Pattern (Simplified Circles)
     ctx.strokeStyle = "rgba(188, 108, 37, 0.2)";
     ctx.lineWidth = 5;
     for (let i = 0; i < 10; i++) {
@@ -584,14 +509,12 @@ async function drawSteampunk(ctx, width, height, data) {
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.stroke();
-        // Teeth
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
         ctx.arc(x, y, r + 5, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
     }
-    // Brass Plating Border
     const brass = ctx.createLinearGradient(0, 0, width, 0);
     brass.addColorStop(0, "#8a5a44");
     brass.addColorStop(0.5, "#d68c45");
@@ -601,7 +524,6 @@ async function drawSteampunk(ctx, width, height, data) {
     ctx.fillRect(0, height - 20, width, 20);
     ctx.fillRect(0, 0, 20, height);
     ctx.fillRect(width - 20, 0, 20, height);
-    // Rivets
     ctx.fillStyle = "#283618";
     for (let i = 30; i < width; i += 40) {
         ctx.beginPath();
@@ -623,7 +545,6 @@ async function drawSteampunk(ctx, width, height, data) {
     const stats = [data.wallet, data.bank, data.net];
     let x = 70;
     stats.forEach((v, i) => {
-        // Brass Plates
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.fillRect(x, 260, 210, 100);
         ctx.lineWidth = 2;
@@ -638,20 +559,16 @@ async function drawSteampunk(ctx, width, height, data) {
         x += 240;
     });
 }
-// 10. Holographic -> UPGRADED
 async function drawHolo(ctx, width, height, data) {
-    // Silver/Grey Gradient
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#e0e1dd");
     grad.addColorStop(1, "#silver");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // Scanlines
     ctx.fillStyle = "rgba(0,0,0,0.05)";
     for (let i = 0; i < height; i += 4) {
         ctx.fillRect(0, i, width, 2);
     }
-    // Iridescent Strip
     const rainbow = ctx.createLinearGradient(0, 100, width, 100);
     rainbow.addColorStop(0, "rgba(255,0,0,0.2)");
     rainbow.addColorStop(0.2, "rgba(255,255,0,0.2)");
@@ -687,12 +604,9 @@ async function drawHolo(ctx, width, height, data) {
         x += 240;
     });
 }
-// 11. Marble Luxury -> UPGRADED
 async function drawMarble(ctx, width, height, data) {
-    // White Marble
     ctx.fillStyle = "#f8f9fa";
     ctx.fillRect(0, 0, width, height);
-    // Marble Veins
     ctx.strokeStyle = "rgba(0,0,0,0.1)";
     ctx.lineWidth = 3;
     for (let i = 0; i < 15; i++) {
@@ -701,7 +615,6 @@ async function drawMarble(ctx, width, height, data) {
         ctx.bezierCurveTo(Math.random() * width, height / 2, Math.random() * width, height / 2, Math.random() * width, height);
         ctx.stroke();
     }
-    // Gold Trim
     ctx.strokeStyle = "#d4af37";
     ctx.lineWidth = 4;
     ctx.strokeRect(30, 30, width - 60, height - 60);
@@ -717,7 +630,6 @@ async function drawMarble(ctx, width, height, data) {
     const stats = [data.wallet, data.bank, data.net];
     let x = 70;
     stats.forEach((v, i) => {
-        // Minimal gold underline
         ctx.fillStyle = "#6c757d";
         ctx.font = "18px 'Georgia', serif";
         ctx.fillText(["LIQUID", "RESERVE", "ESTATE"][i], x, 280);
@@ -729,20 +641,15 @@ async function drawMarble(ctx, width, height, data) {
         x += 240;
     });
 }
-// 12. Casino Classic -> UPGRADED
 async function drawCasinoClassic(ctx, width, height, data) {
-    // Green Felt
     ctx.fillStyle = "#1b4332";
     ctx.fillRect(0, 0, width, height);
-    // Wood Rail
     ctx.lineWidth = 30;
     ctx.strokeStyle = "#582f0e";
     ctx.strokeRect(0, 0, width, height);
-    // Golden Inner Line
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#cca43b";
     ctx.strokeRect(30, 30, width - 60, height - 60);
-    // Card Suits Background Pattern
     ctx.fillStyle = "rgba(0,0,0,0.1)";
     ctx.font = "40px Arial";
     for (let i = 50; i < width; i += 100) {
@@ -763,7 +670,6 @@ async function drawCasinoClassic(ctx, width, height, data) {
     const stats = [data.wallet, data.bank, data.net];
     let x = 70;
     stats.forEach((v, i) => {
-        // Poker Chip circle for value? No, maybe just text with chip icon
         ctx.fillStyle = "#081c15";
         drawRoundedRect(ctx, x, 260, 210, 100, 10);
         ctx.fill();
@@ -779,16 +685,12 @@ async function drawCasinoClassic(ctx, width, height, data) {
         x += 240;
     });
 }
-// --- PREMIUM THEMES ---
-// 13. Luxurious Obsidian
 async function drawObsidian(ctx, width, height, data) {
-    // 1. Matte Black Background
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#141414");
     grad.addColorStop(1, "#000000");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // 2. Glossy Geometric Patterns (Subtle Hexagons)
     ctx.save();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
     ctx.lineWidth = 1;
@@ -806,28 +708,22 @@ async function drawObsidian(ctx, width, height, data) {
         }
     }
     ctx.restore();
-    // 3. Gold Accent Lines
     const gold = "#D4AF37";
     ctx.strokeStyle = gold;
     ctx.lineWidth = 2;
-    // Top right accent
     ctx.beginPath();
     ctx.moveTo(width - 200, 0);
     ctx.lineTo(width, 200);
     ctx.stroke();
-    // Bottom left accent
     ctx.beginPath();
     ctx.moveTo(0, height - 200);
     ctx.lineTo(200, height);
     ctx.stroke();
-    // 4. Avatar with Gold Border
     await drawAvatar(ctx, data.avatarUrl, 60, 60, 120, true, gold);
-    // LEVEL BADGE (Obsidian)
-    // Small sleek gold box near avatar
     ctx.fillStyle = "#141414";
     ctx.strokeStyle = gold;
     ctx.lineWidth = 1;
-    drawRoundedRect(ctx, 40, 160, 160, 30, 5); // Below avatar
+    drawRoundedRect(ctx, 40, 160, 160, 30, 5);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = gold;
@@ -835,14 +731,12 @@ async function drawObsidian(ctx, width, height, data) {
     ctx.textAlign = "center";
     ctx.fillText(`LEVEL ${data.level}`, 120, 180);
     ctx.textAlign = "left";
-    // 5. Typography
     ctx.fillStyle = gold;
     ctx.font = "bold 38px 'Segoe UI', sans-serif";
     ctx.fillText(data.username, 210, 100);
     ctx.fillStyle = "#A0A0A0";
     ctx.font = "24px 'Segoe UI', sans-serif";
     ctx.fillText(`ELITE MEMBER // ${data.creditScore}`, 210, 140);
-    // 6. Stats Cards
     const stats = [
         { label: "WALLET", value: data.wallet },
         { label: "BANK", value: data.bank },
@@ -850,19 +744,16 @@ async function drawObsidian(ctx, width, height, data) {
     ];
     let x = 60;
     stats.forEach(stat => {
-        // Card Background
         const cardGrad = ctx.createLinearGradient(x, 240, x, 340);
         cardGrad.addColorStop(0, "rgba(20, 20, 20, 0.8)");
         cardGrad.addColorStop(1, "rgba(10, 10, 10, 0.9)");
         ctx.fillStyle = cardGrad;
         drawRoundedRect(ctx, x, 240, 210, 110, 10);
         ctx.fill();
-        // Delicate Gold Border
         ctx.strokeStyle = "rgba(212, 175, 55, 0.3)";
         ctx.lineWidth = 1;
         drawRoundedRect(ctx, x, 240, 210, 110, 10);
         ctx.stroke();
-        // Text
         ctx.fillStyle = "#D4AF37";
         ctx.font = "bold 16px 'Segoe UI', sans-serif";
         ctx.fillText(stat.label, x + 20, 275);
@@ -872,15 +763,12 @@ async function drawObsidian(ctx, width, height, data) {
         x += 230;
     });
 }
-// 14. Glassmorphism Pro
 async function drawGlassmorphism(ctx, width, height, data) {
-    // 1. Soft Gradient Background
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#a18cd1");
     grad.addColorStop(1, "#fbc2eb");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // 2. Floating Circular Blobs (for depth)
     ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
     ctx.beginPath();
     ctx.arc(100, 100, 150, 0, Math.PI * 2);
@@ -889,27 +777,22 @@ async function drawGlassmorphism(ctx, width, height, data) {
     ctx.beginPath();
     ctx.arc(700, 350, 200, 0, Math.PI * 2);
     ctx.fill();
-    // 3. Main Frosted Glass Card
     ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
     ctx.shadowColor = "rgba(0, 0, 0, 0.1)";
     ctx.shadowBlur = 20;
     drawRoundedRect(ctx, 40, 40, width - 80, height - 80, 25);
     ctx.fill();
     ctx.shadowBlur = 0;
-    // Border for definition
     ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
     ctx.lineWidth = 1;
     drawRoundedRect(ctx, 40, 40, width - 80, height - 80, 25);
     ctx.stroke();
-    // 4. Avatar
     await drawAvatar(ctx, data.avatarUrl, 80, 80, 110, true, "rgba(255,255,255,0.8)");
-    // LEVEL BADGE (Glassmorphism)
-    // Floating circular pill
     ctx.save();
     ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
     ctx.shadowBlur = 10;
     ctx.shadowColor = "rgba(0,0,0,0.1)";
-    drawRoundedRect(ctx, 600, 130, 120, 40, 20); // Top right area
+    drawRoundedRect(ctx, 600, 130, 120, 40, 20);
     ctx.fill();
     ctx.fillStyle = "#fff";
     ctx.font = "bold 20px 'Segoe UI', sans-serif";
@@ -917,19 +800,16 @@ async function drawGlassmorphism(ctx, width, height, data) {
     ctx.fillText(`LVL ${data.level}`, 660, 158);
     ctx.textAlign = "left";
     ctx.restore();
-    // 5. Typography
     ctx.fillStyle = "#fff";
     ctx.font = "bold 42px 'Segoe UI', sans-serif";
     ctx.fillText(data.username, 220, 130);
     ctx.font = "24px 'Segoe UI', sans-serif";
     ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
     ctx.fillText(`Score: ${data.creditScore}`, 220, 170);
-    // 6. Stats in Glass Boxes
     const stats = [data.wallet, data.bank, data.net];
     const labels = ["Wallet", "Bank", "Net Worth"];
     let x = 80;
     stats.forEach((v, i) => {
-        // Inner Glass Box
         ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
         drawRoundedRect(ctx, x, 250, 180, 90, 15);
         ctx.fill();
@@ -945,18 +825,14 @@ async function drawGlassmorphism(ctx, width, height, data) {
         x += 210;
     });
 }
-// 15. Midnight Prism
 async function drawMidnightPrism(ctx, width, height, data) {
-    // 1. Deep Space Background
     const grad = ctx.createLinearGradient(0, 0, 0, height);
     grad.addColorStop(0, "#020024");
     grad.addColorStop(1, "#090979");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // 2. Sharp Prismatic Shards
     ctx.save();
     ctx.globalCompositeOperation = "overlay";
-    // Shard 1
     const shard1 = ctx.createLinearGradient(0, 0, 400, 400);
     shard1.addColorStop(0, "rgba(0, 255, 255, 0.2)");
     shard1.addColorStop(1, "rgba(255, 0, 255, 0.1)");
@@ -967,7 +843,6 @@ async function drawMidnightPrism(ctx, width, height, data) {
     ctx.lineTo(200, 400);
     ctx.closePath();
     ctx.fill();
-    // Shard 2
     const shard2 = ctx.createLinearGradient(400, 0, 800, 450);
     shard2.addColorStop(0, "rgba(255, 0, 255, 0.15)");
     shard2.addColorStop(1, "rgba(0, 255, 255, 0.15)");
@@ -979,7 +854,6 @@ async function drawMidnightPrism(ctx, width, height, data) {
     ctx.closePath();
     ctx.fill();
     ctx.restore();
-    // 3. Avatar Hexagon Clip
     ctx.save();
     const avX = 70, avY = 60, avSize = 120;
     ctx.beginPath();
@@ -1005,7 +879,6 @@ async function drawMidnightPrism(ctx, width, height, data) {
         ctx.fillRect(-avSize / 2, -avSize / 2, avSize, avSize);
     }
     ctx.restore();
-    // Hexagon Border
     ctx.save();
     ctx.translate(avX + avSize / 2, avY + avSize / 2);
     ctx.beginPath();
@@ -1025,18 +898,15 @@ async function drawMidnightPrism(ctx, width, height, data) {
     ctx.closePath();
     ctx.stroke();
     ctx.restore();
-    // 4. Typography
     ctx.fillStyle = "#fff";
     ctx.font = "bold 36px 'Courier New', monospace";
     ctx.shadowColor = "#FF00FF";
     ctx.shadowBlur = 10;
     ctx.fillText(data.username.toUpperCase(), 220, 110);
     ctx.shadowBlur = 0;
-    // LEVEL INDICATOR (Prism) - Hexagon styling
     ctx.fillStyle = "#00FFFF";
     ctx.font = "bold 20px 'Courier New', monospace";
     ctx.fillText(`LVL.${data.level} // RATING:[${data.creditScore}]`, 220, 150);
-    // 5. Data Bars
     const stats = [
         { l: "WALLET", v: data.wallet },
         { l: "VAULT", v: data.bank },
@@ -1044,34 +914,27 @@ async function drawMidnightPrism(ctx, width, height, data) {
     ];
     let y = 230;
     stats.forEach(s => {
-        // Bar bg
         ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
         ctx.fillRect(70, y, 660, 45);
-        // Label
         ctx.fillStyle = "#00FFFF";
         ctx.font = "bold 18px 'Courier New', monospace";
         ctx.fillText(s.l, 85, y + 28);
-        // Value
         ctx.fillStyle = "#FFF";
         ctx.textAlign = "right";
         ctx.font = "24px 'Courier New', monospace";
         ctx.fillText(s.v, 715, y + 30);
         ctx.textAlign = "left";
-        // Accent line
         ctx.fillStyle = "#FF00FF";
         ctx.fillRect(70, y, 5, 45);
         y += 60;
     });
 }
-// --- RANK CARD IMPLEMENTATIONS ---
 async function drawRankObsidian(ctx, width, height, data) {
-    // 1. Background
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#141414");
     grad.addColorStop(1, "#000000");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // 2. Gold Accents
     const gold = "#D4AF37";
     ctx.strokeStyle = gold;
     ctx.lineWidth = 2;
@@ -1083,27 +946,21 @@ async function drawRankObsidian(ctx, width, height, data) {
     ctx.moveTo(0, height - 150);
     ctx.lineTo(150, height);
     ctx.stroke();
-    // 3. Avatar
     await drawAvatar(ctx, data.avatarUrl, 30, 45, 160, true, gold);
-    // 4. Text
     ctx.fillStyle = gold;
     ctx.font = "bold 32px 'Segoe UI', sans-serif";
     ctx.fillText(data.username, 220, 80);
     ctx.fillStyle = "#A0A0A0";
     ctx.font = "20px 'Segoe UI', sans-serif";
     ctx.fillText(`Rank #${data.rank}  •  Level ${data.level}`, 220, 115);
-    // 5. Progress Bar
-    // Background
     ctx.fillStyle = "#222";
     ctx.fillRect(220, 150, 500, 20);
-    // Fill
     const fillWidth = 500 * Math.min(Math.max(data.currentXp / data.requiredXp, 0), 1);
     const barGrad = ctx.createLinearGradient(220, 150, 720, 150);
     barGrad.addColorStop(0, gold);
     barGrad.addColorStop(1, "#fbf5b7");
     ctx.fillStyle = barGrad;
     ctx.fillRect(220, 150, fillWidth, 20);
-    // XP Text (Aligned with Rank/Level)
     ctx.fillStyle = "#fff";
     ctx.font = "16px 'Segoe UI', sans-serif";
     ctx.textAlign = "right";
@@ -1111,13 +968,11 @@ async function drawRankObsidian(ctx, width, height, data) {
     ctx.textAlign = "left";
 }
 async function drawRankGlass(ctx, width, height, data) {
-    // 1. Background
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#a18cd1");
     grad.addColorStop(1, "#fbc2eb");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // 2. Glass Box
     ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
     ctx.shadowColor = "rgba(0, 0, 0, 0.1)";
     ctx.shadowBlur = 10;
@@ -1126,16 +981,13 @@ async function drawRankGlass(ctx, width, height, data) {
     ctx.shadowBlur = 0;
     ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
     ctx.stroke();
-    // 3. Avatar
     await drawAvatar(ctx, data.avatarUrl, 50, 45, 160, true, "rgba(255,255,255,0.8)");
-    // 4. Text
     ctx.fillStyle = "#fff";
     ctx.font = "bold 34px 'Segoe UI', sans-serif";
     ctx.fillText(data.username, 240, 80);
     ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.font = "20px 'Segoe UI', sans-serif";
     ctx.fillText(`Rank #${data.rank}  •  Level ${data.level}`, 240, 115);
-    // 5. Progress Bar
     ctx.fillStyle = "rgba(255,255,255,0.3)";
     drawRoundedRect(ctx, 240, 150, 480, 20, 10);
     ctx.fill();
@@ -1150,20 +1002,17 @@ async function drawRankGlass(ctx, width, height, data) {
     ctx.textAlign = "left";
 }
 async function drawRankPrism(ctx, width, height, data) {
-    // 1. Background
     const grad = ctx.createLinearGradient(0, 0, 0, height);
     grad.addColorStop(0, "#020024");
     grad.addColorStop(1, "#090979");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-    // 2. Shards
     ctx.fillStyle = "rgba(0, 255, 255, 0.1)";
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(300, 0);
     ctx.lineTo(100, 250);
     ctx.fill();
-    // 3. Hex Cliped Avatar
     ctx.save();
     const avX = 40, avY = 45, avSize = 160;
     ctx.translate(avX + avSize / 2, avY + avSize / 2);
@@ -1188,7 +1037,6 @@ async function drawRankPrism(ctx, width, height, data) {
         ctx.fillRect(-avSize / 2, -avSize / 2, avSize, avSize);
     }
     ctx.restore();
-    // Hex Border
     ctx.save();
     ctx.translate(avX + avSize / 2, avY + avSize / 2);
     ctx.strokeStyle = "#00FFFF";
@@ -1206,14 +1054,12 @@ async function drawRankPrism(ctx, width, height, data) {
     ctx.closePath();
     ctx.stroke();
     ctx.restore();
-    // 4. Text
     ctx.fillStyle = "#fff";
     ctx.font = "bold 32px 'Courier New', monospace";
     ctx.fillText(data.username.toUpperCase(), 230, 80);
     ctx.fillStyle = "#00FFFF";
     ctx.font = "20px 'Courier New', monospace";
     ctx.fillText(`RANK[#${data.rank}] :: LEVEL[${data.level}]`, 230, 115);
-    // 5. Progress Bar
     ctx.fillStyle = "rgba(0, 255, 255, 0.2)";
     ctx.fillRect(230, 150, 500, 20);
     const fillWidth = 500 * Math.min(Math.max(data.currentXp / data.requiredXp, 0), 1);
@@ -1226,35 +1072,28 @@ async function drawRankPrism(ctx, width, height, data) {
     ctx.textAlign = "left";
 }
 async function drawRankClassic(ctx, width, height, theme, data) {
-    // Fallback using getProfileStyle colors
     const style = getProfileStyle(theme);
-    // Background
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(0, 0, width, height);
     ctx.fillStyle = style.backgroundColor;
     ctx.fillRect(10, 10, width - 20, height - 20);
-    // Avatar
     await drawAvatar(ctx, data.avatarUrl, 30, 45, 160, true, style.primaryColor);
-    // Text
     ctx.fillStyle = style.textColor;
     ctx.font = "bold 34px sans-serif";
     ctx.fillText(data.username, 220, 80);
     ctx.font = "20px sans-serif";
     ctx.fillText(`Rank #${data.rank}  Level ${data.level}`, 220, 115);
-    // Bar
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(220, 150, 500, 20);
     const fillWidth = 500 * Math.min(Math.max(data.currentXp / data.requiredXp, 0), 1);
     ctx.fillStyle = style.primaryColor;
     ctx.fillRect(220, 150, fillWidth, 20);
-    // XP Text (Fixed placement & Color)
     ctx.fillStyle = style.textColor;
     ctx.textAlign = "right";
     ctx.font = "20px sans-serif";
     ctx.fillText(`${data.currentXp} / ${data.requiredXp} XP`, 720, 115);
     ctx.textAlign = "left";
 }
-// Dispatcher
 async function drawRankCard(ctx, width, height, theme, data) {
     const t = (theme || "classic").toLowerCase();
     switch (t) {
@@ -1275,11 +1114,9 @@ async function drawRankCard(ctx, width, height, theme, data) {
             break;
     }
 }
-// Helper for Rank Command (Simple Stats)
 function getProfileStyle(theme) {
     const t = (theme || "").toLowerCase();
     switch (t) {
-        // Group A
         case 'neon_noir':
         case 'cyberpunk':
             return { backgroundColor: '#090910', textColor: '#fff', primaryColor: '#00FFFF' };
@@ -1291,7 +1128,6 @@ function getProfileStyle(theme) {
         case 'egyptian':
         case 'royal':
             return { backgroundColor: '#1c1c1c', textColor: '#fbf5b7', primaryColor: '#bf953f' };
-        // Group B
         case 'frozen':
             return { backgroundColor: '#001219', textColor: '#e9d8a6', primaryColor: '#94d2bd' };
         case 'inferno':
@@ -1300,7 +1136,6 @@ function getProfileStyle(theme) {
             return { backgroundColor: '#240046', textColor: '#00ff00', primaryColor: '#7209b7' };
         case 'cosmic':
             return { backgroundColor: '#10002b', textColor: '#fff', primaryColor: '#4cc9f0' };
-        // Group C
         case 'steampunk':
             return { backgroundColor: '#3e2723', textColor: '#dda15e', primaryColor: '#d68c45' };
         case 'holo':
@@ -1309,7 +1144,6 @@ function getProfileStyle(theme) {
             return { backgroundColor: '#f8f9fa', textColor: '#212529', primaryColor: '#d4af37' };
         case 'casino':
             return { backgroundColor: '#1b4332', textColor: '#fff', primaryColor: '#cca43b' };
-        // Premium
         case 'obsidian':
         case 'luxurious':
             return { backgroundColor: '#000000', textColor: '#D4AF37', primaryColor: '#D4AF37' };
@@ -1319,7 +1153,7 @@ function getProfileStyle(theme) {
         case 'prism':
         case 'midnight':
             return { backgroundColor: '#020024', textColor: '#fff', primaryColor: '#00FFFF' };
-        default: // Classic
+        default:
             return { backgroundColor: '#2b2b2b', textColor: '#ffffff', primaryColor: '#00ff00' };
     }
 }

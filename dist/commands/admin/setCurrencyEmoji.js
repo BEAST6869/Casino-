@@ -3,10 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSetCurrencyEmoji = handleSetCurrencyEmoji;
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleSetCurrencyEmoji(message, args) {
     try {
-        if (!message.member?.permissions.has("Administrator")) {
-            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins only.")] });
+        if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
+            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins or Bot Commanders only.")] });
         }
         const input = args[0];
         if (!input) {
@@ -14,11 +15,10 @@ async function handleSetCurrencyEmoji(message, args) {
         }
         let finalEmoji = input;
         const guildEmojis = message.guild?.emojis.cache;
-        // 1. Check if input is a raw ID (e.g. "123456789")
         if (/^\d+$/.test(input)) {
             const foundEmoji = guildEmojis?.get(input);
             if (foundEmoji) {
-                finalEmoji = foundEmoji.toString(); // <a:name:id>
+                finalEmoji = foundEmoji.toString();
             }
             else {
                 return message.reply({
@@ -26,8 +26,6 @@ async function handleSetCurrencyEmoji(message, args) {
                 });
             }
         }
-        // 2. Check if input is a Name (e.g. "coin")
-        // matches alphanumeric names, ignores if it looks like <...>, unicode, or symbols
         else if (/^[a-zA-Z0-9_]+$/.test(input)) {
             const foundEmoji = guildEmojis?.find(e => e.name === input);
             if (foundEmoji) {
@@ -39,8 +37,6 @@ async function handleSetCurrencyEmoji(message, args) {
                 });
             }
         }
-        // 3. Otherwise assume it's already a valid unicode (🪙) or full string (<:coin:123>)
-        // We save it as-is.
         await (0, guildConfigService_1.updateGuildConfig)(message.guildId, { currencyEmoji: finalEmoji });
         return message.reply({
             embeds: [(0, embed_1.successEmbed)(message.author, "Emoji Updated", `Currency emoji set to: ${finalEmoji}`)]

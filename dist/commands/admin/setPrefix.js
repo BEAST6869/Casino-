@@ -3,11 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSetPrefix = handleSetPrefix;
 const guildConfigService_1 = require("../../services/guildConfigService");
 const embed_1 = require("../../utils/embed");
+const permissionUtils_1 = require("../../utils/permissionUtils");
 async function handleSetPrefix(message, args) {
     try {
-        if (!message.member?.permissions.has("Administrator")) {
+        if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
             return message.reply({
-                embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins only.")]
+                embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins or Bot Commanders only.")]
             });
         }
         const newPrefix = args[0];

@@ -9,7 +9,6 @@ const setPrefix_1 = require("./commands/admin/setPrefix");
 const setIncome_1 = require("./commands/admin/setIncome");
 const addEmoji_1 = require("./commands/admin/addEmoji");
 const setRob_1 = require("./commands/admin/setRob");
-// economy
 const balance_1 = require("./commands/economy/balance");
 const deposit_1 = require("./commands/economy/deposit");
 const withdrawBank_1 = require("./commands/economy/withdrawBank");
@@ -22,7 +21,6 @@ const profile_1 = require("./commands/economy/profile");
 const leaderboard_1 = require("./commands/economy/leaderboard");
 const bank_1 = require("./commands/economy/bank");
 const market_1 = require("./commands/economy/market");
-// admin
 const addMoney_1 = require("./commands/admin/addMoney");
 const setEconomyConfig_1 = require("./commands/admin/setEconomyConfig");
 const removeMoney_1 = require("./commands/admin/removeMoney");
@@ -39,29 +37,46 @@ const setTheme_1 = require("./commands/general/setTheme");
 const casinoBan_1 = require("./commands/admin/casinoBan");
 const casinoUnban_1 = require("./commands/admin/casinoUnban");
 const casinoBanList_1 = require("./commands/admin/casinoBanList");
-// games
 const roulette_1 = require("./commands/games/roulette");
 const blackjack_1 = require("./commands/games/blackjack");
 const coinflip_1 = require("./commands/games/coinflip");
 const slots_1 = require("./commands/games/slots");
 const setMinBet_1 = require("./commands/admin/setMinBet");
+const adminDashboard_1 = require("./commands/admin/adminDashboard");
+const resetAdminConfig_1 = require("./commands/admin/resetAdminConfig");
 const prisma_1 = __importDefault(require("./utils/prisma"));
 const embed_1 = require("./utils/embed");
 const stringUtils_1 = require("./utils/stringUtils");
 async function routeMessage(client, message, prefix) {
     const raw = message.content.slice(1).trim();
     const [cmd, ...args] = raw.split(/\s+/);
-    const command = cmd.toLowerCase();
-    // Ban Check Middleware
-    if (message.author.id) {
-        const user = await prisma_1.default.user.findUnique({ where: { discordId: message.author.id } });
+    let command = cmd.toLowerCase();
+    if (command === "set" && args[0]?.toLowerCase() === "casino" && args[1]?.toLowerCase() === "channel") {
+        command = "set-casino-channel";
+        args.splice(0, 2);
+    }
+    if (command === "channel" && args[0]?.toLowerCase() === "override") {
+        command = "channel-override";
+        args.shift();
+    }
+    if (command === "bot" && args[0]?.toLowerCase() === "commander") {
+        command = "bot-commander";
+        args.shift();
+    }
+    if (command === "command" && args[0]?.toLowerCase() === "status") {
+        command = "command-status";
+        args.shift();
+    }
+    if (message.author.id && message.guildId) {
+        const user = await prisma_1.default.user.findUnique({
+            where: { discordId_guildId: { discordId: message.author.id, guildId: message.guildId } }
+        });
         if (user?.isBanned) {
             return message.reply({
                 embeds: [(0, embed_1.errorEmbed)(message.author, "Banned", "🚫 You are banned from the casino.")]
             });
         }
     }
-    // Aliases mapping
     const normalized = ({
         dep: "deposit",
         depo: "deposit",
@@ -90,6 +105,18 @@ async function routeMessage(client, message, prefix) {
         bj: "blackjack",
         "21": "blackjack"
     }[command] ?? command);
+    if (message.guildId) {
+        const { checkCommandPermission } = require("./services/permissionService");
+        const { allowed, reason } = await checkCommandPermission(message, normalized);
+        if (!allowed) {
+            if (reason === "This channel is not a designated Casino Channel.") {
+                return;
+            }
+            return message.reply({
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Command Blocked", `🚫 ${reason || "You do not have permission to use this command."}`)]
+            });
+        }
+    }
     switch (normalized) {
         case "addemoji":
             return (0, addEmoji_1.handleAddEmoji)(message, args);
@@ -106,9 +133,6 @@ async function routeMessage(client, message, prefix) {
         case "setcurrencyemoji":
         case "setemoji":
             return (0, setCurrencyEmoji_1.handleSetCurrencyEmoji)(message, args);
-        // ----------------
-        // Economy / User
-        // ----------------
         case "balance":
             return (0, balance_1.handleBalance)(message);
         case "bank":
@@ -122,7 +146,6 @@ async function routeMessage(client, message, prefix) {
             return (0, transfer_1.handleTransfer)(message, args);
         case "collect":
             return (0, collect_1.handleCollectRoleIncome)(message, args);
-        // Income
         case "work":
         case "crime":
         case "beg":
@@ -131,9 +154,6 @@ async function routeMessage(client, message, prefix) {
         case "rob":
         case "steal":
             return (0, rob_1.handleRob)(message, args);
-        // ----------------
-        // Shop & Inventory
-        // ----------------
         case "shop":
         case "store":
             return (0, shop_1.handleShop)(message, args);
@@ -143,9 +163,6 @@ async function routeMessage(client, message, prefix) {
         case "p":
         case "userinfo":
             return (0, profile_1.handleProfile)(message, args);
-        // ----------------
-        // Leaderboard & Levels
-        // ----------------
         case "leaderboard":
             return (0, leaderboard_1.handleLeaderboard)(message, args);
         case "rank":
@@ -155,9 +172,6 @@ async function routeMessage(client, message, prefix) {
             return rank(client, message, args);
         case "lb-wallet":
             return (0, leaderboard_1.handleLeaderboard)(message, ["cash"]);
-        // ----------------
-        // Games
-        // ----------------
         case "bet":
             return (0, roulette_1.handleBet)(message, args);
         case "blackjack":
@@ -166,9 +180,6 @@ async function routeMessage(client, message, prefix) {
             return (0, coinflip_1.handleCoinflip)(message, args);
         case "slots":
             return (0, slots_1.handleSlots)(message, args);
-        // ----------------
-        // Admin
-        // ----------------
         case "add-money":
         case "admin-add":
             return (0, addMoney_1.handleAddMoney)(message, args);
@@ -191,7 +202,6 @@ async function routeMessage(client, message, prefix) {
         case "admin-view-config":
         case "view-config":
             return (0, viewConfig_1.handleAdminViewConfig)(message, args);
-        // Shop Management
         case "shop-add":
         case "add-shop-item":
             return (0, addShopItem_1.handleAddShopItem)(message, args);
@@ -215,7 +225,6 @@ async function routeMessage(client, message, prefix) {
         case "bm":
         case "black-market":
             return (0, market_1.execute)(message, args);
-        // Economy Configs
         case "set-loan-interest":
         case "set-loan":
             return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, args, "loan");
@@ -257,6 +266,27 @@ async function routeMessage(client, message, prefix) {
         case "add-credit-tier":
             const { handleAddCreditTier } = require("./commands/admin/addCreditTier");
             return handleAddCreditTier(message, args);
+        case "loan-ban":
+        case "ban-loan":
+            const { handleLoanBan } = require("./commands/admin/manageLoanBan");
+            return handleLoanBan(message, args);
+        case "loan-unban":
+        case "unban-loan":
+            const { handleLoanUnban } = require("./commands/admin/manageLoanBan");
+            return handleLoanUnban(message, args);
+        case "make-casino-admin":
+        case "promote-casino-admin":
+        case "casino-admin-add":
+            const { handleMakeCasinoAdmin } = require("./commands/admin/manageCasinoAdmin");
+            return handleMakeCasinoAdmin(message, args);
+        case "remove-casino-admin":
+        case "demote-casino-admin":
+            const { handleRemoveCasinoAdmin } = require("./commands/admin/manageCasinoAdmin");
+            return handleRemoveCasinoAdmin(message, args);
+        case "casino-admins-list":
+        case "casino-admins":
+            const { handleListCasinoAdmins } = require("./commands/admin/manageCasinoAdmin");
+            return handleListCasinoAdmins(message);
         case "config-credit-tier":
         case "config-credit":
         case "edit-credit-tier":
@@ -273,20 +303,22 @@ async function routeMessage(client, message, prefix) {
         case "ask-money":
             const { handleAsk } = require("./commands/economy/ask");
             return handleAsk(message, args);
-        case "toggle-ask-money":
-            // Map "off" / "disable" -> "0", everything else "1" (enable)
-            let val = "1";
-            if (args[0]?.toLowerCase() === "off" || args[0]?.toLowerCase() === "disable")
-                val = "0";
-            return (0, setEconomyConfig_1.handleSetEconomyConfig)(message, [val], "toggle-ask");
-        // ----------------
-        // Fallback
-        // ----------------
-        // ----------------
-        // Fallback & Suggestions
-        // ----------------
+        case "test": {
+            const { handleCommandStatus } = require("./commands/admin/debugPermissions");
+            return handleCommandStatus(message, args);
+        }
+        case "adminpanel":
+        case "admin-panel":
+        case "dashboard": {
+            return (0, adminDashboard_1.handleAdminDashboard)(message);
+        }
+        case "reset-admin-settings":
+        case "reset-permissions":
+        case "reset-perms":
+        case "reset-access": {
+            return (0, resetAdminConfig_1.handleResetAdminSettings)(message);
+        }
         default:
-            // Valid Commands List for Suggestions
             const VALID_COMMANDS = [
                 "balance", "bank", "deposit", "withdraw", "transfer", "collect",
                 "work", "crime", "beg", "slut", "rob", "shop", "inventory", "profile",
@@ -298,8 +330,9 @@ async function routeMessage(client, message, prefix) {
                 "set-credit-reward", "set-credit-penalty", "set-credit-cap",
                 "set-min-credit-cap", "set-max-loans", "credit", "set-credit",
                 "add-credit-tier", "config-credit-tier", "view-credit-tiers", "delete-credit-tier",
-                "ask-money", "toggle-ask-money", "config-rob", "add-emoji", "set-income-cd", "set-prefix",
-                "set-currency-emoji"
+                "add-credit-tier", "config-credit-tier", "view-credit-tiers", "delete-credit-tier",
+                "ask-money", "config-rob", "add-emoji", "set-income-cd", "set-prefix",
+                "set-currency-emoji", "adminpanel"
             ];
             const bestMatch = (0, stringUtils_1.findBestMatch)(command, VALID_COMMANDS);
             if (bestMatch) {

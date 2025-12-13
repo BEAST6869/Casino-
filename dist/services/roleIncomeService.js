@@ -7,9 +7,6 @@ exports.setRoleIncome = setRoleIncome;
 exports.getRoleIncomes = getRoleIncomes;
 exports.claimRoleIncome = claimRoleIncome;
 const prisma_1 = __importDefault(require("../utils/prisma"));
-/**
- * Set income for a specific role (Admin).
- */
 async function setRoleIncome(guildId, roleId, amount, cooldownSeconds = 86400) {
     return await prisma_1.default.roleIncome.upsert({
         where: {
@@ -30,24 +27,13 @@ async function setRoleIncome(guildId, roleId, amount, cooldownSeconds = 86400) {
         }
     });
 }
-/**
- * Get all configured role incomes for a guild.
- */
 async function getRoleIncomes(guildId) {
     return await prisma_1.default.roleIncome.findMany({ where: { guildId } });
 }
-/**
- * Claim income for a user based on their roles.
- * @param discordId User's Discord ID
- * @param guildId Guild ID
- * @param roleIds Array of Role IDs the user currently has
- */
 async function claimRoleIncome(discordId, guildId, roleIds) {
-    // 1. Get user (needed for ObjectId)
-    const user = await prisma_1.default.user.findUnique({ where: { discordId } });
+    const user = await prisma_1.default.user.findUnique({ where: { discordId_guildId: { discordId, guildId } } });
     if (!user)
         throw new Error("User profile not found.");
-    // 2. Find eligible incomes
     const eligibleIncomes = await prisma_1.default.roleIncome.findMany({
         where: {
             guildId,
@@ -59,9 +45,7 @@ async function claimRoleIncome(discordId, guildId, roleIds) {
     }
     const results = [];
     let totalPayout = 0;
-    // 3. Process each income
     for (const income of eligibleIncomes) {
-        // Find existing claim to check cooldown
         const claim = await prisma_1.default.roleIncomeClaim.findUnique({
             where: {
                 userId_roleIncomeId: {
@@ -74,11 +58,9 @@ async function claimRoleIncome(discordId, guildId, roleIds) {
         if (claim) {
             const nextClaim = new Date(claim.claimedAt.getTime() + income.cooldown * 1000);
             if (now < nextClaim) {
-                // Too early
                 continue;
             }
         }
-        // 4. Pay User & Update Claim
         await prisma_1.default.$transaction([
             prisma_1.default.bank.update({
                 where: { userId: user.id },

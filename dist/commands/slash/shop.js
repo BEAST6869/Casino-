@@ -8,41 +8,30 @@ const guildConfigService_1 = require("../../services/guildConfigService");
 const walletService_1 = require("../../services/walletService");
 const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
-// Layout: 1 Row per Item (to align Name and Price side-by-side)
-// Row content: [ Name Button (Gray) ] [ Price Button (Green) ]
-// Max 5 rows allowed. 1 reserved for Nav.
-// Result: 4 Items per page.
 const ITEMS_PER_PAGE = 4;
-// Helper to generate the store UI
 function renderStorePage(items, page, emoji) {
     const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
     page = Math.max(1, Math.min(page, totalPages));
     const start = (page - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
     const currentItems = items.slice(start, end);
-    // 1. EMBED (Header Only - Matches UnbelievaBoat)
     const embed = new discord_js_1.EmbedBuilder()
         .setTitle("Store")
         .setDescription("Click a button below to instantly buy an item, or use the `/shop buy` command.\nFor more details before purchasing, use the `/shop info` command.")
         .setColor(discord_js_1.Colors.DarkGrey)
         .setFooter({ text: `Page ${page}/${totalPages}` });
-    // 2. COMPONENT ROWS (The List Layout)
     const rows = [];
     for (const item of currentItems) {
-        // Left Button: Info / Name (Gray)
         const infoBtn = new discord_js_1.ButtonBuilder()
             .setCustomId(`shop_info_${item.id}`)
             .setLabel(item.name.length > 25 ? item.name.substring(0, 22) + "..." : item.name)
             .setStyle(discord_js_1.ButtonStyle.Secondary)
             .setEmoji("❔");
-        // Right Button: Price / Buy (Green)
         const buyBtn = new discord_js_1.ButtonBuilder()
             .setCustomId(`shop_buy_${item.id}`)
-            .setLabel(item.price.toLocaleString()) // Just the number on the button
+            .setLabel(item.price.toLocaleString())
             .setStyle(discord_js_1.ButtonStyle.Success);
-        // Try to set emoji on buy button
         try {
-            // Regex to detect custom emoji ID or fallback to standard
             const btnEmoji = emoji.match(/:(\d+)>/)?.[1] ?? (emoji.match(/^\d+$/) ? emoji : "🛒");
             buyBtn.setEmoji(btnEmoji);
         }
@@ -51,7 +40,6 @@ function renderStorePage(items, page, emoji) {
         }
         rows.push(new discord_js_1.ActionRowBuilder().addComponents(infoBtn, buyBtn));
     }
-    // 3. NAVIGATION ROW
     const navRow = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId(`shop_prev`).setLabel("Previous Page").setStyle(discord_js_1.ButtonStyle.Primary).setDisabled(page <= 1), new discord_js_1.ButtonBuilder().setCustomId(`shop_next`).setLabel("Next Page").setStyle(discord_js_1.ButtonStyle.Primary).setDisabled(page >= totalPages));
     rows.push(navRow);
     return { embed, components: rows, page, totalPages };
@@ -73,12 +61,11 @@ async function execute(interaction) {
     const config = await (0, guildConfigService_1.getGuildConfig)(interaction.guildId);
     const emoji = config.currencyEmoji;
     const subcommand = interaction.options.getSubcommand();
-    // --- SUBCOMMAND: /shop buy <item> ---
     if (subcommand === "buy") {
         const itemName = interaction.options.getString("item", true);
-        await interaction.deferReply(); // Acknowledge to prevent timeout
+        await interaction.deferReply();
         try {
-            await (0, walletService_1.ensureUserAndWallet)(interaction.user.id, interaction.user.tag);
+            await (0, walletService_1.ensureUserAndWallet)(interaction.user.id, interaction.guildId, interaction.user.tag);
             const item = await (0, shopService_1.buyItem)(interaction.guildId, interaction.user.id, itemName);
             if (item.roleId && interaction.guild) {
                 const role = interaction.guild.roles.cache.get(item.roleId);
@@ -96,7 +83,6 @@ async function execute(interaction) {
             return interaction.editReply({ embeds: [(0, embed_1.errorEmbed)(interaction.user, "Failed", err.message)] });
         }
     }
-    // --- SUBCOMMAND: /shop inventory ---
     if (subcommand === "inventory") {
         await interaction.deferReply();
         const inv = await (0, shopService_1.getUserInventory)(interaction.user.id, interaction.guildId);
@@ -106,10 +92,9 @@ async function execute(interaction) {
         const embed = new discord_js_1.EmbedBuilder().setTitle(`${interaction.user.username}'s Inventory`).setColor(discord_js_1.Colors.Blue).setDescription(desc || "Empty");
         return interaction.editReply({ embeds: [embed] });
     }
-    // --- MAIN SHOP DASHBOARD (/shop view) ---
     if (subcommand === "view") {
         try {
-            await interaction.deferReply(); // Loading state
+            await interaction.deferReply();
             const allItems = await (0, shopService_1.getShopItems)(interaction.guildId);
             if (allItems.length === 0) {
                 return interaction.editReply({ embeds: [(0, embed_1.errorEmbed)(interaction.user, "Shop Empty", "No items are currently for sale.")] });
@@ -123,7 +108,6 @@ async function execute(interaction) {
                 filter: (i) => i.user.id === interaction.user.id
             });
             collector.on("collect", async (btnInteraction) => {
-                // Navigation
                 if (btnInteraction.customId === "shop_prev") {
                     currentPage--;
                     const newUI = renderStorePage(allItems, currentPage, emoji);
@@ -136,7 +120,6 @@ async function execute(interaction) {
                     await btnInteraction.update({ embeds: [newUI.embed], components: newUI.components });
                     return;
                 }
-                // Info Button
                 if (btnInteraction.customId.startsWith("shop_info_")) {
                     const itemId = btnInteraction.customId.replace("shop_info_", "");
                     const item = allItems.find(i => i.id === itemId);
@@ -153,7 +136,6 @@ async function execute(interaction) {
                     }
                     return;
                 }
-                // Buy Button
                 if (btnInteraction.customId.startsWith("shop_buy_")) {
                     const itemId = btnInteraction.customId.replace("shop_buy_", "");
                     const item = allItems.find(i => i.id === itemId);
@@ -162,7 +144,7 @@ async function execute(interaction) {
                         return;
                     }
                     try {
-                        await (0, walletService_1.ensureUserAndWallet)(btnInteraction.user.id, btnInteraction.user.tag);
+                        await (0, walletService_1.ensureUserAndWallet)(btnInteraction.user.id, btnInteraction.guildId, btnInteraction.user.tag);
                         const bought = await (0, shopService_1.buyItem)(btnInteraction.guildId, btnInteraction.user.id, item.name);
                         if (bought.roleId && btnInteraction.guild) {
                             const role = btnInteraction.guild.roles.cache.get(bought.roleId);
@@ -188,9 +170,7 @@ async function execute(interaction) {
             });
             collector.on("end", () => {
                 try {
-                    // FIX: Regenerate the UI using our helper instead of parsing the message
                     const endUI = renderStorePage(allItems, currentPage, emoji);
-                    // Disable all buttons
                     const disabledRows = endUI.components.map(row => {
                         row.components.forEach(btn => btn.setDisabled(true));
                         return row;
