@@ -48,6 +48,7 @@ import prisma from "./utils/prisma";
 import { errorEmbed } from "./utils/embed";
 import { findBestMatch } from "./utils/stringUtils";
 import { handleUse } from "./commands/economy/use";
+import { handleItemInfo } from "./commands/economy/iteminfo";
 
 export async function routeMessage(client: Client, message: Message, prefix: string) {
   const raw = message.content.slice(1).trim();
@@ -55,7 +56,7 @@ export async function routeMessage(client: Client, message: Message, prefix: str
   let command = cmd.toLowerCase();
   if (command === "set" && args[0]?.toLowerCase() === "casino" && args[1]?.toLowerCase() === "channel") {
     command = "set-casino-channel";
-    args.splice(0, 2); 
+    args.splice(0, 2);
   }
   if (command === "channel" && args[0]?.toLowerCase() === "override") {
     command = "channel-override";
@@ -324,6 +325,11 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     }
     case "use": {
       return handleUse(message, args);
+    }
+    case "iteminfo":
+    case "item-info":
+    case "item": {
+      return handleItemInfo(message, args);
     }
     default:
       const VALID_COMMANDS = [

@@ -88,7 +88,7 @@ export async function handleManageShop(message: Message, args: string[]) {
 
       const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId("btn_add_effect").setLabel("Add Effect").setStyle(ButtonStyle.Success).setEmoji("➕"),
-        new ButtonBuilder().setCustomId("btn_clear_effects").setLabel("Clear All").setStyle(ButtonStyle.Danger).setEmoji("🗑️"),
+        new ButtonBuilder().setCustomId("btn_clear_effects").setLabel("Clear All").setStyle(ButtonStyle.Danger).setEmoji("<a:Delete:1449708417890386062>"),
         new ButtonBuilder().setCustomId("btn_back").setLabel("Back").setStyle(ButtonStyle.Secondary).setEmoji("↩️")
       );
 
@@ -97,27 +97,27 @@ export async function handleManageShop(message: Message, args: string[]) {
 
     // MAIN View
     const embed = new EmbedBuilder()
-      .setTitle(`⚙️ Managing: ${item.name}`)
+      .setTitle(`<a:setting:1445732449010319433> Managing: ${item.name}`)
       .setColor(Colors.Orange)
       .addFields(
-        { name: "Name", value: item.name, inline: true },
-        { name: "Price", value: fmtCurrency(item.price, emoji), inline: true },
-        { name: "Stock", value: item.stock === -1 ? "Infinite" : String(item.stock), inline: true },
-        { name: "Description", value: item.description || "None", inline: false },
+        { name: "<:pencill:1449707576475521102> Name", value: item.name, inline: true },
+        { name: "<:pricee:1449707707442528387> Price", value: fmtCurrency(item.price, emoji), inline: true },
+        { name: "<a:BoxBox:1449707866079494154> Stock", value: item.stock === -1 ? "Infinite" : String(item.stock), inline: true },
+        { name: "<:scrolll:1446218234171887760> Description", value: item.description || "None", inline: false },
         { name: "Role ID (Legacy)", value: item.roleId || "None", inline: false },
-        { name: "Effects", value: `${(item.effects || []).length} active effects`, inline: false }
+        { name: "<:sparks:1449708086099968031> Effects", value: `${(item.effects || []).length} active effects`, inline: false }
       );
 
     const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("edit_name").setLabel("Name").setStyle(ButtonStyle.Secondary).setEmoji("📝"),
-      new ButtonBuilder().setCustomId("edit_price").setLabel("Price").setStyle(ButtonStyle.Secondary).setEmoji("💰"),
-      new ButtonBuilder().setCustomId("edit_stock").setLabel("Stock").setStyle(ButtonStyle.Secondary).setEmoji("📦"),
-      new ButtonBuilder().setCustomId("edit_desc").setLabel("Desc").setStyle(ButtonStyle.Secondary).setEmoji("📜")
+      new ButtonBuilder().setCustomId("edit_name").setLabel("Name").setStyle(ButtonStyle.Secondary).setEmoji("<:pencill:1449707576475521102>"),
+      new ButtonBuilder().setCustomId("edit_price").setLabel("Price").setStyle(ButtonStyle.Secondary).setEmoji("<:pricee:1449707707442528387>"),
+      new ButtonBuilder().setCustomId("edit_stock").setLabel("Stock").setStyle(ButtonStyle.Secondary).setEmoji("<a:BoxBox:1449707866079494154>"),
+      new ButtonBuilder().setCustomId("edit_desc").setLabel("Desc").setStyle(ButtonStyle.Secondary).setEmoji("<:scrolll:1446218234171887760>")
     );
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("btn_effects").setLabel("Edit Effects").setStyle(ButtonStyle.Primary).setEmoji("✨"),
-      new ButtonBuilder().setCustomId("btn_delete").setLabel("DELETE ITEM").setStyle(ButtonStyle.Danger).setEmoji("🗑️"),
+      new ButtonBuilder().setCustomId("btn_effects").setLabel("Edit Effects").setStyle(ButtonStyle.Primary).setEmoji("<:sparks:1449708086099968031>"),
+      new ButtonBuilder().setCustomId("btn_delete").setLabel("DELETE ITEM").setStyle(ButtonStyle.Danger).setEmoji("<a:Delete:1449708417890386062>"),
       new ButtonBuilder().setCustomId("btn_done").setLabel("Done").setStyle(ButtonStyle.Success)
     );
 
