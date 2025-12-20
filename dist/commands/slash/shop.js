@@ -8,41 +8,47 @@ const guildConfigService_1 = require("../../services/guildConfigService");
 const walletService_1 = require("../../services/walletService");
 const format_1 = require("../../utils/format");
 const embed_1 = require("../../utils/embed");
-const ITEMS_PER_PAGE = 4;
-function renderStorePage(items, page, emoji) {
+const ITEMS_PER_PAGE = 5;
+// Helper to render the shop page with "Price Tag" visuals and Direct Buy Buttons
+async function renderStorePage(interaction, items, page, emoji) {
     const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
     page = Math.max(1, Math.min(page, totalPages));
     const start = (page - 1) * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE;
-    const currentItems = items.slice(start, end);
+    // Proper slicing
+    const currentItems = items.slice(start, start + ITEMS_PER_PAGE);
     const embed = new discord_js_1.EmbedBuilder()
-        .setTitle("Store")
-        .setDescription("Click a button below to instantly buy an item, or use the `/shop buy` command.\nFor more details before purchasing, use the `/shop info` command.")
+        .setTitle("🛒 Store")
         .setColor(discord_js_1.Colors.DarkGrey)
-        .setFooter({ text: `Page ${page}/${totalPages}` });
-    const rows = [];
-    for (const item of currentItems) {
-        const infoBtn = new discord_js_1.ButtonBuilder()
-            .setCustomId(`shop_info_${item.id}`)
-            .setLabel(item.name.length > 25 ? item.name.substring(0, 22) + "..." : item.name)
-            .setStyle(discord_js_1.ButtonStyle.Secondary)
-            .setEmoji("❔");
-        const buyBtn = new discord_js_1.ButtonBuilder()
-            .setCustomId(`shop_buy_${item.id}`)
-            .setLabel(item.price.toLocaleString())
-            .setStyle(discord_js_1.ButtonStyle.Success);
-        try {
-            const btnEmoji = emoji.match(/:(\d+)>/)?.[1] ?? (emoji.match(/^\d+$/) ? emoji : "🛒");
-            buyBtn.setEmoji(btnEmoji);
-        }
-        catch {
-            buyBtn.setEmoji("🛒");
-        }
-        rows.push(new discord_js_1.ActionRowBuilder().addComponents(infoBtn, buyBtn));
+        .setFooter({ text: `Page ${page}/${totalPages} • Click the buttons below to buy` });
+    if (currentItems.length > 0) {
+        const description = currentItems.map((item, index) => {
+            const stockText = item.stock === -1 ? "" : ` • Stock: ${item.stock}`;
+            // Chip mention: </shop buy:ID>
+            const shopCmdId = interaction.commandId;
+            const buyAction = `</shop buy:${shopCmdId}>`;
+            // Row Text Format: Item Name - $Price </shop buy>
+            return `**${item.name}** — **${(0, format_1.fmtCurrency)(item.price, emoji)}** ${buyAction}\n*${item.description || "No description"}*${stockText}`;
+        }).join("\n\n");
+        embed.setDescription(description);
     }
-    const navRow = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId(`shop_prev`).setLabel("Previous Page").setStyle(discord_js_1.ButtonStyle.Primary).setDisabled(page <= 1), new discord_js_1.ButtonBuilder().setCustomId(`shop_next`).setLabel("Next Page").setStyle(discord_js_1.ButtonStyle.Primary).setDisabled(page >= totalPages));
-    rows.push(navRow);
-    return { embed, components: rows, page, totalPages };
+    else {
+        embed.setDescription("No items available.");
+    }
+    // Row 1: Direct Buy Buttons ("Buy ItemName")
+    const buyRow = new discord_js_1.ActionRowBuilder();
+    if (currentItems.length > 0) {
+        currentItems.forEach((item) => {
+            buyRow.addComponents(new discord_js_1.ButtonBuilder()
+                .setCustomId(`shop_buy_${item.id}`)
+                .setLabel(item.name.length > 20 ? item.name.substring(0, 18) + ".." : item.name)
+                .setStyle(discord_js_1.ButtonStyle.Success) // Green
+                .setEmoji("🛒"));
+        });
+    }
+    // Row 2: Navigation
+    const navRow = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId(`shop_prev`).setLabel("Previous").setStyle(discord_js_1.ButtonStyle.Secondary).setDisabled(page <= 1), new discord_js_1.ButtonBuilder().setCustomId(`shop_next`).setLabel("Next").setStyle(discord_js_1.ButtonStyle.Secondary).setDisabled(page >= totalPages));
+    const components = currentItems.length > 0 ? [buyRow, navRow] : [navRow];
+    return { embed, components, page, totalPages };
 }
 exports.data = new discord_js_1.SlashCommandBuilder()
     .setName("shop")
@@ -88,7 +94,11 @@ async function execute(interaction) {
         const inv = await (0, shopService_1.getUserInventory)(interaction.user.id, interaction.guildId);
         if (inv.length === 0)
             return interaction.editReply("Your inventory is empty.");
-        const desc = inv.map(i => `• **${i.shopItem.name}** (x${i.amount})`).join("\n");
+        const desc = inv.map(i => {
+            const item = i.shopItem;
+            const usable = (item.consumable || item.effects) ? " **[USE]**" : "";
+            return `• **${item.name}${usable}** (x${i.amount})`;
+        }).join("\n");
         const embed = new discord_js_1.EmbedBuilder().setTitle(`${interaction.user.username}'s Inventory`).setColor(discord_js_1.Colors.Blue).setDescription(desc || "Empty");
         return interaction.editReply({ embeds: [embed] });
     }
@@ -99,8 +109,10 @@ async function execute(interaction) {
             if (allItems.length === 0) {
                 return interaction.editReply({ embeds: [(0, embed_1.errorEmbed)(interaction.user, "Shop Empty", "No items are currently for sale.")] });
             }
+            // Sort items by price (lowest to highest)
+            allItems.sort((a, b) => a.price - b.price);
             let currentPage = 1;
-            const ui = renderStorePage(allItems, currentPage, emoji);
+            const ui = await renderStorePage(interaction, allItems, currentPage, emoji);
             const sentMessage = await interaction.editReply({ embeds: [ui.embed], components: ui.components });
             const collector = sentMessage.createMessageComponentCollector({
                 componentType: discord_js_1.ComponentType.Button,
@@ -110,30 +122,14 @@ async function execute(interaction) {
             collector.on("collect", async (btnInteraction) => {
                 if (btnInteraction.customId === "shop_prev") {
                     currentPage--;
-                    const newUI = renderStorePage(allItems, currentPage, emoji);
+                    const newUI = await renderStorePage(interaction, allItems, currentPage, emoji);
                     await btnInteraction.update({ embeds: [newUI.embed], components: newUI.components });
                     return;
                 }
                 if (btnInteraction.customId === "shop_next") {
                     currentPage++;
-                    const newUI = renderStorePage(allItems, currentPage, emoji);
+                    const newUI = await renderStorePage(interaction, allItems, currentPage, emoji);
                     await btnInteraction.update({ embeds: [newUI.embed], components: newUI.components });
-                    return;
-                }
-                if (btnInteraction.customId.startsWith("shop_info_")) {
-                    const itemId = btnInteraction.customId.replace("shop_info_", "");
-                    const item = allItems.find(i => i.id === itemId);
-                    if (item) {
-                        const detailEmbed = new discord_js_1.EmbedBuilder()
-                            .setTitle(item.name)
-                            .setDescription(item.description)
-                            .setColor(discord_js_1.Colors.Blurple)
-                            .addFields({ name: "Price", value: (0, format_1.fmtCurrency)(item.price, emoji), inline: true }, { name: "Stock", value: item.stock === -1 ? "∞" : item.stock.toString(), inline: true });
-                        await btnInteraction.reply({ embeds: [detailEmbed], ephemeral: true });
-                    }
-                    else {
-                        await btnInteraction.reply({ content: "Item not found.", ephemeral: true });
-                    }
                     return;
                 }
                 if (btnInteraction.customId.startsWith("shop_buy_")) {
@@ -153,9 +149,7 @@ async function execute(interaction) {
                                 try {
                                     await member.roles.add(role);
                                 }
-                                catch (e) {
-                                    console.log("Role error", e);
-                                }
+                                catch (e) { }
                             }
                         }
                         await btnInteraction.reply({
@@ -168,9 +162,9 @@ async function execute(interaction) {
                     }
                 }
             });
-            collector.on("end", () => {
+            collector.on("end", async () => {
                 try {
-                    const endUI = renderStorePage(allItems, currentPage, emoji);
+                    const endUI = await renderStorePage(interaction, allItems, currentPage, emoji);
                     const disabledRows = endUI.components.map(row => {
                         row.components.forEach(btn => btn.setDisabled(true));
                         return row;

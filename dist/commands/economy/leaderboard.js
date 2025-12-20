@@ -27,6 +27,7 @@ async function handleLeaderboard(message, args) {
         initialType = "level";
     let currentType = initialType;
     const users = await prisma_1.default.user.findMany({
+        where: { guildId: message.guildId },
         include: { wallet: true, bank: true },
     });
     const getSorted = (t) => {

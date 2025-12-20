@@ -9,8 +9,12 @@ exports.createShopItem = createShopItem;
 exports.updateShopItem = updateShopItem;
 exports.deleteShopItem = deleteShopItem;
 exports.buyItem = buyItem;
+exports.useItem = useItem;
 exports.getUserInventory = getUserInventory;
 const prisma_1 = __importDefault(require("../utils/prisma"));
+const effectService_1 = require("./effectService");
+const discordLogger_1 = require("../utils/discordLogger");
+const discord_js_1 = require("discord.js");
 async function getShopItems(guildId) {
     return prisma_1.default.shopItem.findMany({ where: { guildId } });
 }
@@ -22,7 +26,7 @@ async function getShopItemByName(guildId, name) {
         }
     });
 }
-async function createShopItem(guildId, name, price, description, roleId) {
+async function createShopItem(guildId, name, price, description, roleId, itemType, effects, consumable) {
     return prisma_1.default.shopItem.create({
         data: {
             guildId,
@@ -30,20 +34,27 @@ async function createShopItem(guildId, name, price, description, roleId) {
             price,
             description: description || "No description",
             roleId,
-            stock: -1
+            stock: -1,
+            itemType: itemType || "COLLECTIBLE",
+            effects: effects ? effects : undefined,
+            consumable: consumable || false
         }
     });
 }
 async function updateShopItem(guildId, itemId, data) {
+    const updateData = { ...data };
+    if (data.effects) {
+        updateData.effects = data.effects;
+    }
     return prisma_1.default.shopItem.update({
         where: { id: itemId },
-        data
+        data: updateData
     });
 }
 async function deleteShopItem(itemId) {
     return prisma_1.default.shopItem.delete({ where: { id: itemId } });
 }
-async function buyItem(guildId, userId, itemName) {
+async function buyItem(guildId, userId, itemName, member) {
     const item = await prisma_1.default.shopItem.findFirst({
         where: {
             guildId,
@@ -72,6 +83,7 @@ async function buyItem(guildId, userId, itemName) {
                 data: { stock: { decrement: 1 } }
             });
         }
+        // Always add to inventory
         await tx.inventory.upsert({
             where: { userId_shopItemId: { userId: user.id, shopItemId: item.id } },
             create: { guildId, userId: user.id, shopItemId: item.id, amount: 1 },
@@ -88,6 +100,57 @@ async function buyItem(guildId, userId, itemName) {
         });
         return item;
     });
+}
+async function useItem(userId, guildId, itemName, member) {
+    const item = await getShopItemByName(guildId, itemName);
+    if (!item)
+        throw new Error("Item not found.");
+    if (!item.consumable && !item.effects) {
+        throw new Error("This item cannot be used.");
+    }
+    const user = await prisma_1.default.user.findUnique({
+        where: { discordId_guildId: { discordId: userId, guildId } }
+    });
+    if (!user)
+        throw new Error("User not found.");
+    const inventoryItem = await prisma_1.default.inventory.findUnique({
+        where: { userId_shopItemId: { userId: user.id, shopItemId: item.id } },
+        include: { shopItem: true }
+    });
+    if (!inventoryItem || inventoryItem.amount <= 0) {
+        throw new Error("You don't own this item.");
+    }
+    if (member && member.client) {
+        const guild = await member.client.guilds.fetch(guildId).catch(() => null);
+        if (guild) {
+            await (0, discordLogger_1.logToChannel)(member.client, {
+                guild,
+                type: "ECONOMY",
+                title: "Item Used",
+                description: `<@${userId}> used **${item.name}**`,
+                color: discord_js_1.Colors.Blue,
+                thumbnail: member.user.displayAvatarURL()
+            });
+        }
+    }
+    // Apply effects
+    const effects = item.effects || [];
+    const results = await (0, effectService_1.applyItemEffects)(userId, guildId, effects, member);
+    // Decrease or remove from inventory if consumable
+    if (item.consumable) {
+        if (inventoryItem.amount === 1) {
+            await prisma_1.default.inventory.delete({
+                where: { id: inventoryItem.id }
+            });
+        }
+        else {
+            await prisma_1.default.inventory.update({
+                where: { id: inventoryItem.id },
+                data: { amount: { decrement: 1 } }
+            });
+        }
+    }
+    return { item, results };
 }
 async function getUserInventory(discordId, guildId) {
     const user = await prisma_1.default.user.findUnique({

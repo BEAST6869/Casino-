@@ -153,6 +153,7 @@ model Inventory {
   shopItemId  String   @db.ObjectId
   
   amount      Int      @default(1)
+  meta        Json?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -41,12 +41,15 @@ const roulette_1 = require("./commands/games/roulette");
 const blackjack_1 = require("./commands/games/blackjack");
 const coinflip_1 = require("./commands/games/coinflip");
 const slots_1 = require("./commands/games/slots");
+const cockfight_1 = require("./commands/games/cockfight");
 const setMinBet_1 = require("./commands/admin/setMinBet");
 const adminDashboard_1 = require("./commands/admin/adminDashboard");
 const resetAdminConfig_1 = require("./commands/admin/resetAdminConfig");
 const prisma_1 = __importDefault(require("./utils/prisma"));
 const embed_1 = require("./utils/embed");
 const stringUtils_1 = require("./utils/stringUtils");
+const use_1 = require("./commands/economy/use");
+const iteminfo_1 = require("./commands/economy/iteminfo");
 async function routeMessage(client, message, prefix) {
     const raw = message.content.slice(1).trim();
     const [cmd, ...args] = raw.split(/\s+/);
@@ -101,9 +104,9 @@ async function routeMessage(client, message, prefix) {
         cashlb: "lb-wallet",
         roulette: "bet",
         roul: "bet",
-        cf: "coinflip",
         bj: "blackjack",
-        "21": "blackjack"
+        cockfight: "cockfight",
+        cf: "cockfight"
     }[command] ?? command);
     if (message.guildId) {
         const { checkCommandPermission } = require("./services/permissionService");
@@ -180,6 +183,8 @@ async function routeMessage(client, message, prefix) {
             return (0, coinflip_1.handleCoinflip)(message, args);
         case "slots":
             return (0, slots_1.handleSlots)(message, args);
+        case "cockfight":
+            return (0, cockfight_1.handleCockFight)(message, args);
         case "add-money":
         case "admin-add":
             return (0, addMoney_1.handleAddMoney)(message, args);
@@ -318,13 +323,21 @@ async function routeMessage(client, message, prefix) {
         case "reset-access": {
             return (0, resetAdminConfig_1.handleResetAdminSettings)(message);
         }
+        case "use": {
+            return (0, use_1.handleUse)(message, args);
+        }
+        case "iteminfo":
+        case "item-info":
+        case "item": {
+            return (0, iteminfo_1.handleItemInfo)(message, args);
+        }
         default:
             const VALID_COMMANDS = [
                 "balance", "bank", "deposit", "withdraw", "transfer", "collect",
                 "work", "crime", "beg", "slut", "rob", "shop", "inventory", "profile",
                 "leaderboard", "rank", "bet", "blackjack", "coinflip", "slots",
                 "add-money", "remove-money", "set-start-money", "reset-economy", "set-currency",
-                "min-bet", "viewconfig", "shopadd", "manageitem", "set-theme",
+                "min-bet", "viewconfig", "shop-add", "manage-item", "set-theme",
                 "casino-ban", "casino-unban", "banlist", "black-market",
                 "set-loan-interest", "set-fd-interest", "set-rd-interest", "set-tax",
                 "set-credit-reward", "set-credit-penalty", "set-credit-cap",

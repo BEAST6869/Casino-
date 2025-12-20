@@ -41,6 +41,7 @@ import { handleBet } from "./commands/games/roulette";
 import { handleBlackjack } from "./commands/games/blackjack";
 import { handleCoinflip } from "./commands/games/coinflip";
 import { handleSlots } from "./commands/games/slots";
+import { handleCockFight } from "./commands/games/cockfight";
 import { handleSetMinBet } from "./commands/admin/setMinBet";
 import { handleAdminDashboard } from "./commands/admin/adminDashboard";
 import { handleResetAdminSettings } from "./commands/admin/resetAdminConfig";
@@ -105,9 +106,10 @@ export async function routeMessage(client: Client, message: Message, prefix: str
       cashlb: "lb-wallet",
       roulette: "bet",
       roul: "bet",
-      cf: "coinflip",
       bj: "blackjack",
-      "21": "blackjack"
+      cockfight: "cockfight",
+      cf: "cockfight",
+      chicken: "chicken"
     } as Record<string, string>
   )[command] ?? command);
   if (message.guildId) {
@@ -183,8 +185,18 @@ export async function routeMessage(client: Client, message: Message, prefix: str
       return handleBlackjack(message, args);
     case "coinflip":
       return handleCoinflip(message, args);
+
+
     case "slots":
       return handleSlots(message, args);
+    case "cockfight":
+      return handleCockFight(message, args);
+    case "chicken":
+      const { handleChicken } = require("./commands/games/chicken");
+      return handleChicken(message, args);
+    case "feed":
+      const { handleFeed } = require("./commands/games/feed");
+      return handleFeed(message, args);
     case "add-money":
     case "admin-add":
       return handleAddMoney(message, args);

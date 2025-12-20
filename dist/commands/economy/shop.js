@@ -13,23 +13,27 @@ function renderShopPage(items, page, totalPages, currencyEmoji) {
     const start = (page - 1) * ITEMS_PER_PAGE;
     const currentItems = items.slice(start, start + ITEMS_PER_PAGE);
     const embed = new discord_js_1.EmbedBuilder()
-        .setTitle("Store")
+        .setTitle("🛒 Shop")
         .setColor(discord_js_1.Colors.DarkGrey)
-        .setFooter({ text: `Page ${page}/${totalPages} • Click the numbered button to buy` });
+        .setFooter({ text: `Page ${page}/${totalPages} • Use buttons to buy` + "\u3000".repeat(25) });
     if (currentItems.length > 0) {
-        const description = currentItems.map((item, index) => {
-            return `**${index + 1}. ${item.name}** — ${(0, format_1.fmtCurrency)(item.price, currencyEmoji)}\n*${item.description || "No description"}*`;
-        }).join("\n\n");
-        embed.setDescription(description);
+        // Use fields instead of description for better width control
+        currentItems.forEach((item, index) => {
+            const itemNumber = (page - 1) * ITEMS_PER_PAGE + index + 1;
+            const name = `${itemNumber}. ${item.name} — ${(0, format_1.fmtCurrency)(item.price, currencyEmoji)}`;
+            const value = `${item.description || "No description"}` + "\u3000".repeat(20);
+            embed.addFields({ name, value, inline: false });
+        });
     }
     else {
         embed.setDescription("No items available.");
     }
+    // Row 1: Purchase Buttons (1-5)
     const buyRow = new discord_js_1.ActionRowBuilder();
     currentItems.forEach((item, index) => {
         buyRow.addComponents(new discord_js_1.ButtonBuilder()
             .setCustomId(`shop_buy_${item.id}`)
-            .setLabel(`${index + 1}`)
+            .setLabel(`${(page - 1) * ITEMS_PER_PAGE + index + 1}`)
             .setStyle(discord_js_1.ButtonStyle.Success)
             .setEmoji("🛒"));
     });
@@ -79,9 +83,10 @@ async function handleShop(message, args) {
             return message.reply({ embeds: [embed] });
         }
         const allItems = await (0, shopService_1.getShopItems)(message.guildId);
-        if (allItems.length === 0) {
+        if (allItems.length === 0)
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Shop Empty", "No items are currently for sale.")] });
-        }
+        // Sort items by price (lowest to highest)
+        allItems.sort((a, b) => a.price - b.price);
         let currentPage = 1;
         const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
         const ui = renderShopPage(allItems, currentPage, totalPages, emoji);
@@ -107,11 +112,10 @@ async function handleShop(message, args) {
             if (interaction.customId.startsWith("shop_buy_")) {
                 const itemId = interaction.customId.replace("shop_buy_", "");
                 const item = allItems.find(i => i.id === itemId);
-                if (!item) {
-                    await interaction.reply({ content: "Item not found.", ephemeral: true });
-                    return;
-                }
+                if (!item)
+                    return interaction.reply({ content: "Item not found.", ephemeral: true });
                 try {
+                    await interaction.deferReply({ ephemeral: true });
                     await (0, walletService_1.ensureUserAndWallet)(interaction.user.id, interaction.guildId, interaction.user.tag);
                     const bought = await (0, shopService_1.buyItem)(interaction.guildId, interaction.user.id, item.name);
                     if (bought.roleId && interaction.guild) {
@@ -121,7 +125,7 @@ async function handleShop(message, args) {
                             try {
                                 await member.roles.add(role);
                             }
-                            catch (e) { }
+                            catch { }
                         }
                     }
                     await (0, discordLogger_1.logToChannel)(interaction.client, {
@@ -131,22 +135,22 @@ async function handleShop(message, args) {
                         description: `**User:** ${interaction.user.tag}\n**Item:** ${bought.name}\n**Price:** ${(0, format_1.fmtCurrency)(bought.price, emoji)}`,
                         color: 0x00FF00
                     });
-                    await interaction.reply({
-                        content: `✅ Purchased **${bought.name}** for **${(0, format_1.fmtCurrency)(bought.price, emoji)}**!`,
-                        ephemeral: true
-                    });
+                    await interaction.editReply({ content: `✅ Purchased **${bought.name}** for **${(0, format_1.fmtCurrency)(bought.price, emoji)}**!` });
                 }
                 catch (err) {
-                    await interaction.reply({ content: `❌ Error: ${err.message}`, ephemeral: true });
+                    if (interaction.deferred || interaction.replied) {
+                        await interaction.editReply({ content: `❌ Error: ${err.message}` });
+                    }
+                    else {
+                        await interaction.reply({ content: `❌ Error: ${err.message}`, ephemeral: true });
+                    }
                 }
             }
         });
         collector.on("end", () => {
             try {
                 const finalUI = renderShopPage(allItems, currentPage, totalPages, emoji);
-                finalUI.components.forEach(row => {
-                    row.components.forEach(btn => btn.setDisabled(true));
-                });
+                finalUI.components.forEach(row => row.components.forEach(c => c.setDisabled(true)));
                 sentMessage.edit({ components: finalUI.components }).catch(() => { });
             }
             catch { }

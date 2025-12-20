@@ -111,34 +111,37 @@ async function handleHelp(message) {
             return { id };
         return fallback;
     };
+    const createDropdownRow = () => {
+        const options = [
+            new discord_js_1.StringSelectMenuOptionBuilder()
+                .setLabel("Economy")
+                .setValue("economy")
+                .setDescription("Money, Banking, Shop, Leaderboard")
+                .setEmoji(getMenuEmoji(idEconomy, "💰")),
+            new discord_js_1.StringSelectMenuOptionBuilder()
+                .setLabel("Income")
+                .setValue("income")
+                .setDescription("Work, Beg, Crime")
+                .setEmoji(idIncome ? { id: idIncome } : (incomeRaw.match(/^\d+$/) ? { id: incomeRaw } : "💸")),
+            new discord_js_1.StringSelectMenuOptionBuilder()
+                .setLabel("Games")
+                .setValue("games")
+                .setDescription("Roulette, Slots, Blackjack, Coinflip")
+                .setEmoji(getMenuEmoji(idGames, "🎰")),
+            new discord_js_1.StringSelectMenuOptionBuilder()
+                .setLabel("Admin")
+                .setValue("admin")
+                .setDescription("Server Configuration & Management")
+                .setEmoji(idAdmin ? { id: idAdmin } : "⚙️"),
+        ];
+        return new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.StringSelectMenuBuilder().setCustomId("help_select").setPlaceholder("Select a category").addOptions(options));
+    };
     const overview = new discord_js_1.EmbedBuilder()
         .setTitle(`${config.currencyEmoji} Casino Bot — Help Menu`)
         .setDescription(`Use the dropdown below to explore commands.\nServer Prefix: \`${prefix}\``)
         .setColor(discord_js_1.Colors.DarkPurple)
         .setThumbnail(message.client.user?.displayAvatarURL() ?? null);
-    const options = [
-        new discord_js_1.StringSelectMenuOptionBuilder()
-            .setLabel("Economy")
-            .setValue("economy")
-            .setDescription("Money, Banking, Shop, Leaderboard")
-            .setEmoji(getMenuEmoji(idEconomy, "💰")),
-        new discord_js_1.StringSelectMenuOptionBuilder()
-            .setLabel("Income")
-            .setValue("income")
-            .setDescription("Work, Beg, Crime")
-            .setEmoji(idIncome ? { id: idIncome } : (incomeRaw.match(/^\d+$/) ? { id: incomeRaw } : "💸")),
-        new discord_js_1.StringSelectMenuOptionBuilder()
-            .setLabel("Games")
-            .setValue("games")
-            .setDescription("Roulette, Slots, Blackjack, Coinflip")
-            .setEmoji(getMenuEmoji(idGames, "🎰")),
-        new discord_js_1.StringSelectMenuOptionBuilder()
-            .setLabel("Admin")
-            .setValue("admin")
-            .setDescription("Server Configuration & Management")
-            .setEmoji(idAdmin ? { id: idAdmin } : "⚙️"),
-    ];
-    const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.StringSelectMenuBuilder().setCustomId("help_select").setPlaceholder("Select a category").addOptions(options));
+    const row = createDropdownRow();
     const sent = await message.reply({ embeds: [overview], components: [row] });
     const collector = sent.createMessageComponentCollector({
         time: 60000,
@@ -176,30 +179,28 @@ async function handleHelp(message) {
                 const pageData = adminPages[currentAdminPage - 1];
                 embed.setTitle(pageData.title).addFields(pageData.fields);
                 const buttonRow = createPaginationButtons(currentAdminPage, pageData.totalPages);
-                await i.reply({ embeds: [embed], components: [buttonRow], ephemeral: true });
+                const adminMsg = await i.reply({ embeds: [embed], components: [buttonRow], ephemeral: true, fetchReply: true });
+                const adminCollector = adminMsg.createMessageComponentCollector({
+                    componentType: discord_js_1.ComponentType.Button,
+                    time: 60000,
+                    filter: (btnI) => btnI.user.id === message.author.id
+                });
+                adminCollector.on("collect", async (btnI) => {
+                    if (btnI.customId === "admin_prev" && currentAdminPage > 1) {
+                        currentAdminPage--;
+                    }
+                    else if (btnI.customId === "admin_next" && currentAdminPage < adminPages.length) {
+                        currentAdminPage++;
+                    }
+                    const newPageData = adminPages[currentAdminPage - 1];
+                    const newEmbed = new discord_js_1.EmbedBuilder()
+                        .setColor(discord_js_1.Colors.Blurple)
+                        .setTitle(newPageData.title)
+                        .addFields(newPageData.fields);
+                    const newButtonRow = createPaginationButtons(currentAdminPage, newPageData.totalPages);
+                    await btnI.update({ embeds: [newEmbed], components: [newButtonRow] });
+                });
             }
-        }
-        else if (i.isButton()) {
-            const member = i.member;
-            if (!member || !member.permissions.has(discord_js_1.PermissionsBitField.Flags.Administrator)) {
-                await i.reply({ content: "🚫 **Access Denied:** Administrators only.", ephemeral: true });
-                return;
-            }
-            const eSettings = (0, emojiRegistry_1.emojiInline)("settings", message.guild) || "⚙️";
-            const adminPages = createAdminPages(prefix, eSettings);
-            if (i.customId === "admin_prev" && currentAdminPage > 1) {
-                currentAdminPage--;
-            }
-            else if (i.customId === "admin_next" && currentAdminPage < adminPages.length) {
-                currentAdminPage++;
-            }
-            const pageData = adminPages[currentAdminPage - 1];
-            const embed = new discord_js_1.EmbedBuilder()
-                .setColor(discord_js_1.Colors.Blurple)
-                .setTitle(pageData.title)
-                .addFields(pageData.fields);
-            const buttonRow = createPaginationButtons(currentAdminPage, pageData.totalPages);
-            await i.update({ embeds: [embed], components: [buttonRow] });
         }
     });
     collector.on("end", () => {

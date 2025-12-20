@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.initScheduler = initScheduler;
 const node_cron_1 = __importDefault(require("node-cron"));
 const bankingService_1 = require("./services/bankingService");
+const effectService_1 = require("./services/effectService");
 function initScheduler(client) {
     node_cron_1.default.schedule("* * * * *", async () => {
         console.log("🕒 Running daily banking jobs...");
@@ -16,6 +17,7 @@ function initScheduler(client) {
             if (loanCount > 0) {
                 console.log(`✅ Processed ${loanCount} overdue loans.`);
             }
+            await (0, effectService_1.removeTemporaryRoles)(client);
         }
         catch (err) {
             console.error("Scheduler error:", err);

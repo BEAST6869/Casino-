@@ -93,6 +93,16 @@ export async function buyItem(guildId: string, userId: string, itemName: string,
       throw new Error(`You need ${item.price} coins to buy this.`);
     }
 
+    // CHECK: Limit "Chicken" to 1 per person
+    if (item.name.toLowerCase() === "chicken") {
+      const existingInfo = await tx.inventory.findUnique({
+        where: { userId_shopItemId: { userId: user.id, shopItemId: item.id } }
+      });
+      if (existingInfo && existingInfo.amount >= 1) {
+        throw new Error("You can only hold 1 Chicken at a time!");
+      }
+    }
+
     await tx.wallet.update({
       where: { id: user.wallet.id },
       data: { balance: { decrement: item.price } }

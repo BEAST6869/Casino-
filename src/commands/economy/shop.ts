@@ -161,7 +161,11 @@ export async function handleShop(message: Message, args: string[]) {
 
           await interaction.editReply({ content: `✅ Purchased **${bought.name}** for **${fmtCurrency(bought.price, emoji)}**!` });
         } catch (err) {
-          await interaction.editReply({ content: `❌ Error: ${(err as Error).message}` });
+          if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ content: `❌ Error: ${(err as Error).message}` });
+          } else {
+            await interaction.reply({ content: `❌ Error: ${(err as Error).message}`, ephemeral: true });
+          }
         }
       }
     });
