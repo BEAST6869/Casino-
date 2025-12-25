@@ -11,7 +11,8 @@ async function handleSetCurrencyEmoji(message, args) {
         }
         const input = args[0];
         if (!input) {
-            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setemoji <emoji_name | emoji_id | emoji>`")] });
+            const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}setemoji <emoji_name | emoji_id | emoji>\``)] });
         }
         let finalEmoji = input;
         const guildEmojis = message.guild?.emojis.cache;

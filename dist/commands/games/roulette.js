@@ -11,6 +11,7 @@ const embed_1 = require("../../utils/embed");
 const cooldown_1 = require("../../utils/cooldown");
 const format_2 = require("../../utils/format");
 async function handleRouletteMenu(message) {
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const eCasino = "<a:casino:1445732641545654383>";
     const eScroll = "<:scroll:1446218234171887760>";
     const eDicesBtn = "<:dices:1446220119733702767>";
@@ -56,7 +57,7 @@ async function handleRouletteMenu(message) {
         }
         if (i.customId === "roul_play") {
             await i.reply({
-                content: "To place a bet, type:\n`!bet <amount> <choice>`\n\n**Examples:**\n`!bet 100 red`\n`!bet 500 17`\n`!bet 1000 odd`",
+                content: `To place a bet, type:\n\`${config.prefix}bet <amount> <choice>\`\n\n**Examples:**\n\`${config.prefix}bet 100 red\`\n\`${config.prefix}bet 500 17\`\n\`${config.prefix}bet 1000 odd\``,
                 ephemeral: true
             });
         }
@@ -66,6 +67,7 @@ async function handleBet(message, args) {
     const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
     let amount = (0, format_1.parseBetAmount)(args[0], user.wallet.balance);
     let choiceRaw = (args[1] || "").toLowerCase();
+    // Swap args if amount usage is reversed (flexibility)
     if (isNaN(amount)) {
         amount = (0, format_1.parseBetAmount)(args[1], user.wallet.balance);
         choiceRaw = (args[0] || "").toLowerCase();

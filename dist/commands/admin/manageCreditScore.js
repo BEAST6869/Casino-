@@ -17,8 +17,9 @@ async function handleSetCreditScore(message, args) {
     if (args[0]?.toLowerCase() === "all" || args[0]?.toLowerCase() === "everyone") {
         const amountArg = args[1];
         if (!amountArg) {
+            const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
             return message.reply({
-                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!set-credit-score all <amount>`\nExample: `!set-credit-score all 500`")]
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}set-credit-score all <amount>\`\nExample: \`${config.prefix}set-credit-score all 500\``)]
             });
         }
         const amount = parseInt(amountArg);
@@ -43,8 +44,9 @@ async function handleSetCreditScore(message, args) {
     const targetUser = message.mentions.users.first();
     const amountArg = args.find(a => !a.startsWith("<@") && !isNaN(parseInt(a)));
     if (!targetUser || !amountArg) {
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
         return message.reply({
-            embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!set-credit-score @user <amount>` or `!set-credit-score all <amount>`")]
+            embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}set-credit-score @user <amount>\` or \`${config.prefix}set-credit-score all <amount>\``)]
         });
     }
     const amount = parseInt(amountArg);
@@ -55,7 +57,6 @@ async function handleSetCreditScore(message, args) {
         where: { id: user.id },
         data: { creditScore: amount }
     });
-    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     await (0, discordLogger_1.logToChannel)(message.client, {
         guild: message.guild,
         type: "ADMIN",

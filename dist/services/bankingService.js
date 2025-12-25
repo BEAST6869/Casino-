@@ -37,6 +37,7 @@ async function applyForLoan(discordId, guildId, amount) {
     if (!user)
         throw new Error("User not found.");
     const userId = user.id;
+    // Check Max Active Loans
     const activeLoansCount = await prisma_1.default.loan.count({
         where: { userId, status: "ACTIVE" }
     });
@@ -90,9 +91,10 @@ async function repayLoan(discordId, guildId, amount) {
     });
     if (!loan)
         throw new Error("No active loan found.");
+    const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
     const bank = await (0, bankService_1.ensureBankForUser)(discordId, guildId);
     if (bank.balance < amount) {
-        throw new Error("Insufficient bank balance. Please deposit money first using `!deposit`.");
+        throw new Error(`Insufficient bank balance. Please deposit money first using \`${config.prefix}deposit\`.`);
     }
     let newStatus = "ACTIVE";
     let remaining = loan.totalRepayment - amount;
@@ -102,7 +104,6 @@ async function repayLoan(discordId, guildId, amount) {
         payAmount = loan.totalRepayment;
         remaining = 0;
     }
-    const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
     const now = new Date();
     const isOverdue = now > loan.dueDate;
     let scoreChange = 0;

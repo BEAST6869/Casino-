@@ -15,12 +15,12 @@ const EMOJI_RIP = "<:rip:1451287136132403303>";
 async function handleCockFight(message, args) {
     if (!message.guild || !message.member)
         return;
-    // Usage: !cockfight @user <amount>
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
     const targetUser = message.mentions.users.first();
     const rawAmount = args.find(a => !a.startsWith("<@") && /^\d+$/.test(a));
     if (!targetUser || !rawAmount) {
         return message.reply({
-            embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`!cockfight @user <amount>\`\nMin Bet logic applies.`)]
+            embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}cockfight @user <amount>\`\nMin Bet logic applies.`)]
         });
     }
     if (targetUser.id === message.author.id) {
@@ -33,13 +33,9 @@ async function handleCockFight(message, args) {
     if (isNaN(betAmount) || betAmount <= 0) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", "Please enter a valid positive integer.")] });
     }
-    const config = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
     if (betAmount < config.minBet) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Min Bet", `The minimum bet is **${config.minBet}**. `)] });
     }
-    // 1. Check if both users have a "Chicken" item
-    // We need to find the ShopItem for "Chicken" first.
-    // Assuming the item name is literally "chicken" (case insensitive usually, but let's try exact or query).
     const shopItem = await prisma_1.default.shopItem.findFirst({
         where: {
             guildId: message.guild.id,
@@ -49,29 +45,23 @@ async function handleCockFight(message, args) {
     if (!shopItem) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Configuration Error", "There is no item named **Chicken** in the shop. An admin must add it first.")] });
     }
-    // Check Challenger Inventory
     const invChallenger = await prisma_1.default.inventory.findUnique({
         where: { userId_shopItemId: { userId: (await getUserId(message.author.id, message.guild.id)), shopItemId: shopItem.id } }
     });
     if (!invChallenger || invChallenger.amount < 1) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Missing Item", `You need a ${EMOJI_CHICKEN} **Chicken** to fight!`)] });
     }
-    // Check Target Inventory
     const invTarget = await prisma_1.default.inventory.findUnique({
         where: { userId_shopItemId: { userId: (await getUserId(targetUser.id, message.guild.id)), shopItemId: shopItem.id } }
     });
     if (!invTarget || invTarget.amount < 1) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Opponent Missing Item", `${targetUser.username} needs a ${EMOJI_CHICKEN} **Chicken** to fight!`)] });
     }
-    // Check Challenger Balance
-    const challengerBank = await prisma_1.default.bank.findUnique({ where: { userId: (await getUserId(message.author.id, message.guild.id)) } });
     const challengerWallet = await prisma_1.default.wallet.findUnique({ where: { userId: (await getUserId(message.author.id, message.guild.id)) } });
-    // Logic: Usually betting comes from Wallet based on other commands 
     const userBal = challengerWallet?.balance || 0;
     if (userBal < betAmount) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Insufficient Funds", `You only have **${userBal}** in your wallet.`)] });
     }
-    // PHASE 2: Challenge Request
     const acceptEmbed = new discord_js_1.EmbedBuilder()
         .setColor("#FFA500")
         .setTitle(`${EMOJI_CHICKEN} Cock Fight Challenge`)
@@ -95,26 +85,21 @@ async function handleCockFight(message, args) {
             if (gameStarted)
                 return;
             gameStarted = true;
-            // Defer immediately to prevent "Unknown interaction" if DB calls are slow
             try {
                 await i.deferUpdate();
             }
             catch (e) {
-                gameStarted = false; // Reset if interaction failed
+                gameStarted = false;
                 return;
             }
-            // Re-check balances and items just in case
             const targetDbId = await getUserId(targetUser.id, message.guild.id);
-            const challengerDbId = await getUserId(message.author.id, message.guild.id);
-            // Check Target Balance
             const targetWallet = await prisma_1.default.wallet.findUnique({ where: { userId: targetDbId } });
             if ((targetWallet?.balance || 0) < betAmount) {
                 await i.followUp({ content: "You don't have enough money in your wallet to accept!", ephemeral: true });
                 return;
             }
-            await i.editReply({ components: [] }); // Remove buttons using editReply since we deferred
+            await i.editReply({ components: [] });
             collector.stop("accepted");
-            // Start the game flow
             await runCockFight(message, reply, message.author, targetUser, betAmount, shopItem.id);
         }
     });
@@ -124,7 +109,9 @@ async function handleCockFight(message, args) {
         }
     });
 }
-// Ensure User Exists Helper
+// ... Rest of the file (helper functions) ...
+// Since I cannot write partial updates easily without rewriting the whole file in `write_to_file`, I must include the rest of the file content.
+// I'll assume the original helpers are correct and just append them.
 async function getUserId(discordId, guildId) {
     let user = await prisma_1.default.user.findUnique({ where: { discordId_guildId: { discordId, guildId } } });
     if (!user) {
@@ -132,7 +119,7 @@ async function getUserId(discordId, guildId) {
             data: {
                 discordId,
                 guildId,
-                username: "Unknown", // Should update
+                username: "Unknown",
                 wallet: { create: {} },
                 bank: { create: {} }
             }
@@ -142,7 +129,6 @@ async function getUserId(discordId, guildId) {
 }
 async function runCockFight(originalMsg, gameMsg, p1, p2, bet, chickenItemId) {
     const guildId = originalMsg.guild.id;
-    // DEDUCT FUNDS IMMEDIATELY
     const p1Id = await getUserId(p1.id, guildId);
     const p2Id = await getUserId(p2.id, guildId);
     await prisma_1.default.$transaction([
@@ -150,9 +136,7 @@ async function runCockFight(originalMsg, gameMsg, p1, p2, bet, chickenItemId) {
         prisma_1.default.wallet.update({ where: { userId: p2Id }, data: { balance: { decrement: bet } } })
     ]);
     let pot = bet * 2;
-    // Added username to sideBets for display
     const sideBets = [];
-    // PHASE 3: Side Betting
     const bettingEmbed = new discord_js_1.EmbedBuilder()
         .setColor("#FFFF00")
         .setTitle(`${EMOJI_CHICKEN} Betting Phase!`)
@@ -163,20 +147,18 @@ async function runCockFight(originalMsg, gameMsg, p1, p2, bet, chickenItemId) {
     Other players can place side bets now!
     **Side Bets Open for 60 seconds.**
     
+    <:alert_sign:1451625691664875610> **WARNING:** You can only bet **ONCE**. No switching allowed!
     Click the buttons below to bet on a winner.`)
         .addFields({ name: `${p1.username}`, value: "No bets yet.", inline: true }, { name: `${p2.username}`, value: "No bets yet.", inline: true });
     const betRow = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId(`bet_p1`).setLabel(`Bet on ${p1.username}`).setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder().setCustomId(`bet_p2`).setLabel(`Bet on ${p2.username}`).setStyle(discord_js_1.ButtonStyle.Primary));
     await gameMsg.edit({ embeds: [bettingEmbed], components: [betRow] });
     const betCollector = gameMsg.createMessageComponentCollector({ componentType: discord_js_1.ComponentType.Button, time: 60000 });
     betCollector.on("collect", async (i) => {
-        // Restriction: Main players cannot side bet
         if (i.user.id === p1.id || i.user.id === p2.id) {
-            // Safety: Defer first to avoid Unknown Interaction
             await i.deferReply({ ephemeral: true });
             await i.editReply({ content: "You are fighting! You cannot place side bets." });
             return;
         }
-        // Modal for Input
         const target = i.customId === "bet_p1" ? "p1" : "p2";
         const targetName = target === "p1" ? p1.username : p2.username;
         const modal = new discord_js_1.ModalBuilder()
@@ -192,27 +174,32 @@ async function runCockFight(originalMsg, gameMsg, p1, p2, bet, chickenItemId) {
         await i.showModal(modal);
         try {
             const submit = await i.awaitModalSubmit({ time: 30000 });
+            await submit.deferReply({ ephemeral: true });
             const amount = parseInt(submit.fields.getTextInputValue("amount"));
             if (isNaN(amount) || amount <= 0) {
-                await submit.reply({ content: "Invalid amount.", ephemeral: true });
+                await submit.editReply({ content: "Invalid amount." });
                 return;
             }
-            // Determine User
             const bettorDbId = await getUserId(submit.user.id, guildId);
+            if (sideBets.some(b => b.userId === submit.user.id)) {
+                await submit.editReply({ content: "❌ You have already placed a bet! You cannot switch sides or add more." });
+                return;
+            }
             const bettorWallet = await prisma_1.default.wallet.findUnique({ where: { userId: bettorDbId } });
             if (!bettorWallet || bettorWallet.balance < amount) {
-                await submit.reply({ content: "Insufficient funds in wallet.", ephemeral: true });
+                await submit.editReply({ content: `Insufficient funds. Needed **${amount}** but you have **${bettorWallet?.balance ?? 0}**.` });
                 return;
             }
-            // Deduct Side Bet
             await prisma_1.default.wallet.update({ where: { userId: bettorDbId }, data: { balance: { decrement: amount } } });
             sideBets.push({ userId: submit.user.id, username: submit.user.username, amount, target });
             pot += amount;
-            await submit.reply({ content: `Placed bet of **${amount}** on **${targetName}**!`, ephemeral: true });
-            // Update Embed with Names
-            const p1List = sideBets.filter(b => b.target === "p1").map(b => `${b.username} (${b.amount})`).join("\n") || "No bets yet.";
-            const p2List = sideBets.filter(b => b.target === "p2").map(b => `${b.username} (${b.amount})`).join("\n") || "No bets yet.";
-            // Recalculate totals for display if needed, but names are requested
+            await submit.editReply({ content: `Placed bet of **${amount}** on **${targetName}**!` });
+            let p1List = sideBets.filter(b => b.target === "p1").map(b => `${b.username} (${b.amount})`).join("\n") || "No bets yet.";
+            let p2List = sideBets.filter(b => b.target === "p2").map(b => `${b.username} (${b.amount})`).join("\n") || "No bets yet.";
+            if (p1List.length > 1000)
+                p1List = p1List.slice(0, 990) + "... (more)";
+            if (p2List.length > 1000)
+                p2List = p2List.slice(0, 990) + "... (more)";
             const p1Total = sideBets.filter(b => b.target === "p1").reduce((a, b) => a + b.amount, 0);
             const p2Total = sideBets.filter(b => b.target === "p2").reduce((a, b) => a + b.amount, 0);
             bettingEmbed.setFields({ name: `${p1.username} (Total: ${p1Total})`, value: p1List, inline: true }, { name: `${p2.username} (Total: ${p2Total})`, value: p2List, inline: true });
@@ -220,59 +207,95 @@ async function runCockFight(originalMsg, gameMsg, p1, p2, bet, chickenItemId) {
             await gameMsg.edit({ embeds: [bettingEmbed] });
         }
         catch (e) {
-            // Modal timed out or error
         }
     });
     betCollector.on("end", async (collected, reason) => {
-        // PHASE 4: Resolution
-        const winnerIsP1 = Math.random() < 0.5;
+        const p1Id = await getUserId(p1.id, guildId);
+        const p1Inv = await prisma_1.default.inventory.findUnique({ where: { userId_shopItemId: { userId: p1Id, shopItemId: chickenItemId } } });
+        const p1Meta = p1Inv?.meta || {};
+        const p1Level = p1Meta.level || 0;
+        const p2Id = await getUserId(p2.id, guildId);
+        const p2Inv = await prisma_1.default.inventory.findUnique({ where: { userId_shopItemId: { userId: p2Id, shopItemId: chickenItemId } } });
+        const p2Meta = p2Inv?.meta || {};
+        const p2Level = p2Meta.level || 0;
+        const p1Score = 10 + (p1Level * 2);
+        const p2Score = 10 + (p2Level * 2);
+        const totalScore = p1Score + p2Score;
+        const p1Chance = p1Score / totalScore;
+        const rng = Math.random();
+        const winnerIsP1 = rng < p1Chance;
         const winnerUser = winnerIsP1 ? p1 : p2;
         const loserUser = winnerIsP1 ? p2 : p1;
         const winnerKey = winnerIsP1 ? "p1" : "p2";
-        // 1. Calculate Side Payouts
+        const winnerLevel = winnerIsP1 ? p1Level : p2Level;
+        const winChancePercent = (winnerIsP1 ? p1Chance : (1 - p1Chance)) * 100;
         const winningSideBets = sideBets.filter(b => b.target === winnerKey);
-        let totalSidePayoutNeeded = 0;
-        for (const b of winningSideBets) {
-            totalSidePayoutNeeded += b.amount * 2;
-        }
-        // Safety Logic
-        let sidePayoutRatio = 2.0;
-        if (totalSidePayoutNeeded > pot) {
-            sidePayoutRatio = pot / winningSideBets.reduce((a, b) => a + b.amount, 0);
-            totalSidePayoutNeeded = pot;
-        }
+        const sidePayoutRatio = 1.5;
         const payoutOps = [];
-        const mainWinnerPayout = pot - totalSidePayoutNeeded;
-        // Track detailed winnings for embed
+        const mainWinnerPayout = pot;
         const sideWinnersDetails = [];
-        // Pay Side Winners
+        const payoutMap = new Map();
         for (const b of winningSideBets) {
             const payout = Math.floor(b.amount * sidePayoutRatio);
-            const uId = await getUserId(b.userId, guildId);
-            payoutOps.push(prisma_1.default.wallet.update({ where: { userId: uId }, data: { balance: { increment: payout } } }));
-            sideWinnersDetails.push(`**${b.username}**: +${payout}`);
+            const current = payoutMap.get(b.userId) || 0;
+            payoutMap.set(b.userId, current + payout);
+            sideWinnersDetails.push(`<@${b.userId}>: +${payout}`);
         }
-        // Pay Main Winner
+        for (const [userId, amount] of payoutMap.entries()) {
+            const uId = await getUserId(userId, guildId);
+            payoutOps.push(prisma_1.default.wallet.update({ where: { userId: uId }, data: { balance: { increment: amount } } }));
+        }
         if (mainWinnerPayout > 0) {
             const wId = await getUserId(winnerUser.id, guildId);
             payoutOps.push(prisma_1.default.wallet.update({ where: { userId: wId }, data: { balance: { increment: mainWinnerPayout } } }));
         }
-        // Remove Loser Chicken
-        const lId = await getUserId(loserUser.id, guildId);
+        const XP_PER_WIN = 50;
+        const wId = await getUserId(winnerUser.id, guildId);
+        let newLevel = winnerIsP1 ? p1Level : p2Level;
+        let newXp = ((winnerIsP1 ? p1Meta.xp : p2Meta.xp) || 0) + XP_PER_WIN;
+        let newWins = ((winnerIsP1 ? p1Meta.wins : p2Meta.wins) || 0) + 1;
+        let requiredXp = (newLevel + 1) * 100;
+        let leveledUp = false;
+        while (newXp >= requiredXp) {
+            newXp -= requiredXp;
+            newLevel++;
+            leveledUp = true;
+            requiredXp = (newLevel + 1) * 100;
+        }
         payoutOps.push(prisma_1.default.inventory.update({
-            where: { userId_shopItemId: { userId: lId, shopItemId: chickenItemId } },
-            data: { amount: { decrement: 1 } }
+            where: { userId_shopItemId: { userId: wId, shopItemId: chickenItemId } },
+            data: {
+                meta: {
+                    level: newLevel,
+                    wins: newWins,
+                    xp: newXp
+                }
+            }
+        }));
+        const lId = await getUserId(loserUser.id, guildId);
+        payoutOps.push(prisma_1.default.inventory.delete({
+            where: { userId_shopItemId: { userId: lId, shopItemId: chickenItemId } }
         }));
         await prisma_1.default.$transaction(payoutOps);
-        // Detailed Result Embed construction
+        const EMOJI_XP = "<:xpfull:1451636569982111765>";
+        const EMOJI_XP_EMPTY = "<:xpempty:1451642829427314822>";
+        const filledBars = Math.floor((newXp / requiredXp) * 10);
+        const emptyBars = 10 - filledBars;
+        const progressBar = `${EMOJI_XP.repeat(filledBars)}${EMOJI_XP_EMPTY.repeat(emptyBars)}`;
         let sideWinnersText = sideWinnersDetails.length > 0 ? sideWinnersDetails.join("\n") : "None";
         if (sideWinnersText.length > 1024)
-            sideWinnersText = sideWinnersText.slice(0, 1020) + "..."; // safety
+            sideWinnersText = sideWinnersText.slice(0, 1020) + "...";
         const resultEmbed = new discord_js_1.EmbedBuilder()
             .setColor(winnerIsP1 ? "#00FF00" : "#FF0000")
             .setTitle(`${EMOJI_CHICKEN} Cock Fight Result`)
-            .setDescription(`The dust settles...\n\n${EMOJI_WIN} **${winnerUser.username}** is the winner!\n${EMOJI_RIP} **${loserUser.username}**'s chicken has died.`)
-            .addFields({ name: `${EMOJI_WIN} Main Winner`, value: `${winnerUser.username} won **${mainWinnerPayout}**!`, inline: false }, { name: `${EMOJI_WIN} Side Winners`, value: sideWinnersText, inline: false }, { name: "Stats", value: `Total Pot: ${pot}\nSide ROI: ${sidePayoutRatio.toFixed(2)}x`, inline: false });
+            .setDescription(`The dust settles...\n\n${EMOJI_WIN} ${winnerUser} is the winner!\n${EMOJI_RIP} ${loserUser}'s chicken has died.
+            
+**Battle Stats:**
+• Winner Level: ${winnerLevel} ${leveledUp ? `➔ **${newLevel}** (LEVEL UP!)` : `(XP: +${XP_PER_WIN})`}
+• Progress: ${progressBar}
+• Win Chance: ${winChancePercent.toFixed(1)}%
+`)
+            .addFields({ name: `${EMOJI_WIN} Main Winner`, value: `${winnerUser} won **${mainWinnerPayout}**!`, inline: false }, { name: `${EMOJI_WIN} Side Winners`, value: sideWinnersText, inline: false }, { name: "Stats", value: `Total Pot: ${pot}\nSide ROI: ${sidePayoutRatio.toFixed(2)}x`, inline: false });
         await gameMsg.edit({ embeds: [resultEmbed], components: [] });
     });
 }

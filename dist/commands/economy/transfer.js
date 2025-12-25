@@ -9,8 +9,9 @@ const discordLogger_1 = require("../../utils/discordLogger");
 const guildConfigService_1 = require("../../services/guildConfigService");
 async function handleTransfer(message, args) {
     try {
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
         if (args.length < 2) {
-            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!transfer @user <amount>`")] });
+            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}transfer @user <amount>\``)] });
         }
         const targetMention = args[0];
         const amountString = args[1];
@@ -28,7 +29,6 @@ async function handleTransfer(message, args) {
         }
         try {
             await (0, transferService_1.transferAnyFunds)(sender.wallet.id, toId, amount, message.author.id, message.guildId ?? undefined);
-            const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
             await (0, discordLogger_1.logToChannel)(message.client, {
                 guild: message.guild,
                 type: "ECONOMY",

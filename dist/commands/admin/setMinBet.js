@@ -11,7 +11,8 @@ async function handleSetMinBet(message, args) {
     }
     const amountStr = args[0];
     if (!amountStr) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setminbet <amount>`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}setminbet <amount>\``)] });
     }
     const amount = (0, format_1.parseSmartAmount)(amountStr);
     if (isNaN(amount) || amount < 0) {

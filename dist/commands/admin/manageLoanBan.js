@@ -8,13 +8,15 @@ exports.handleLoanUnban = handleLoanUnban;
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
 const permissionUtils_1 = require("../../utils/permissionUtils");
+const guildConfigService_1 = require("../../services/guildConfigService");
 async function handleLoanBan(message, args) {
     if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "You need Administrator or Bot Commander permissions to use this command.")] });
     }
     const targetUser = message.mentions.users.first();
     if (!targetUser) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Please mention a user to ban from loans.\nExample: `!loan-ban @user`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Please mention a user to ban from loans.\nExample: \`${config.prefix}loan-ban @user\``)] });
     }
     const { getPermissionLevel, canActOn, PermissionLevel } = require("../../utils/permissions");
     const actorLevel = await getPermissionLevel(message, message.member);
@@ -67,7 +69,8 @@ async function handleLoanUnban(message, args) {
     }
     const targetUser = message.mentions.users.first();
     if (!targetUser) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Please mention a user to unban from loans.\nExample: `!loan-unban @user`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Please mention a user to unban from loans.\nExample: \`${config.prefix}loan-unban @user\``)] });
     }
     try {
         if (!message.guild)

@@ -4,13 +4,14 @@ import prisma from "../../utils/prisma";
 
 export async function handleCommandStatus(message: Message, args: string[]) {
     const commandName = args[0]?.toLowerCase();
-    if (!commandName) return message.reply("Usage: `!command-status <command>`");
-
     const guildId = message.guildId!;
+    const config = await getGuildConfig(guildId);
+
+    if (!commandName) return message.reply(`Usage: \`${config.prefix}command-status <command>\``);
+
     const userId = message.author.id;
     const channelId = message.channel.id;
     const member = message.member!;
-    const config = await getGuildConfig(guildId);
     const trace: string[] = [];
 
     const isAdmin = member.permissions.has("Administrator");

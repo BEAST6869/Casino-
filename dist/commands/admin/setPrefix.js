@@ -11,10 +11,12 @@ async function handleSetPrefix(message, args) {
                 embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins or Bot Commanders only.")]
             });
         }
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        const currentPrefix = config.prefix || "!";
         const newPrefix = args[0];
         if (!newPrefix || newPrefix.length > 3) {
             return message.reply({
-                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Prefix", "Usage: `!setprefix <symbol>` (max 3 chars)")]
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Prefix", `Usage: \`${currentPrefix}setprefix <symbol>\` (max 3 chars)`)]
             });
         }
         await (0, guildConfigService_1.updateGuildConfig)(message.guildId, { prefix: newPrefix });

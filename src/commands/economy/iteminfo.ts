@@ -1,7 +1,7 @@
 import { Message, EmbedBuilder, Colors } from "discord.js";
 import { getShopItemByName, getShopItems } from "../../services/shopService";
 import { getGuildConfig } from "../../services/guildConfigService";
-import { fmtCurrency } from "../../utils/format";
+import { fmtCurrency, formatDuration } from "../../utils/format";
 import { errorEmbed } from "../../utils/embed";
 import { ItemEffect } from "../../services/effectService";
 
@@ -24,20 +24,13 @@ function formatEffectDescription(effect: ItemEffect): string {
     }
 }
 
-function formatDuration(seconds: number): string {
-    if (seconds < 60) return `${seconds} second(s)`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} minute(s)`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hour(s)`;
-    return `${Math.floor(seconds / 86400)} day(s)`;
-}
-
 export async function handleItemInfo(message: Message, args: string[]) {
     try {
         const config = await getGuildConfig(message.guildId!);
         const emoji = config.currencyEmoji;
 
         if (args.length === 0) {
-            return message.reply("Usage: `!iteminfo <item name>`");
+            return message.reply(`Usage: \`${config.prefix}iteminfo <item name>\``);
         }
 
         const itemName = args.join(" ");
@@ -66,7 +59,7 @@ export async function handleItemInfo(message: Message, args: string[]) {
             embed.addFields({ name: "<:sparks:1449708086099968031> Effects", value: "*No special effects*", inline: false });
         }
 
-        embed.setFooter({ text: `Use !shop buy ${item.name} to purchase` });
+        embed.setFooter({ text: `Use ${config.prefix}shop buy ${item.name} to purchase` });
 
         return message.reply({ embeds: [embed] });
 

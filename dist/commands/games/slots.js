@@ -26,13 +26,13 @@ const MULTIPLIERS = {
     [SEVEN]: 20
 };
 async function handleSlots(message, args) {
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const user = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
     const bet = (0, format_1.parseBetAmount)(args[0], user.wallet.balance);
     if (isNaN(bet) || bet <= 0) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Bet", "Usage: `!slots <amount>`")] });
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Bet", `Usage: \`${config.prefix}slots <amount>\``)] });
     }
     const amount = bet;
-    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const emoji = config.currencyEmoji;
     const minBet = config.minBet;
     if (amount < minBet) {

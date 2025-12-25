@@ -16,7 +16,7 @@ async function handleWithdrawBank(message, args) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Bank Account", "You do not have a bank account.")] });
     const amountStr = args[0];
     if (!amountStr) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", "Usage: `!withdraw <amount | all>`")] });
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", `Usage: \`${config.prefix}withdraw <amount | all>\``)] });
     }
     const amount = (0, format_1.parseSmartAmount)(amountStr, bank.balance);
     if (isNaN(amount) || amount <= 0) {

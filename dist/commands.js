@@ -5,9 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleMessage = handleMessage;
 const prisma_1 = __importDefault(require("./utils/prisma"));
+const guildConfigService_1 = require("./services/guildConfigService");
 async function handleMessage(message) {
     const [cmd, ...args] = message.content.slice(1).trim().split(/\s+/);
     const discordId = message.author.id;
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+    const p = config.prefix;
     switch (cmd.toLowerCase()) {
         case "balance":
             return cmdBalance(message, discordId);
@@ -16,7 +19,7 @@ async function handleMessage(message) {
         case "bet":
             return cmdBet(message, discordId, args);
         default:
-            return message.reply("Unknown command. Try `!balance`, `!deposit <amount>`, `!bet <amount> <choice>`");
+            return message.reply(`Unknown command. Try \`${p}balance\`, \`${p}deposit <amount>\`, \`${p}bet <amount> <choice>\``);
     }
 }
 async function ensureUserAndWallet(discordId, guildId, username) {

@@ -197,6 +197,10 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     case "feed":
       const { handleFeed } = require("./commands/games/feed");
       return handleFeed(message, args);
+    case "set-cockfight":
+    case "setcockfight":
+      const { handleSetCockfight } = require("./commands/admin/setCockfight");
+      return handleSetCockfight(message, args);
     case "add-money":
     case "admin-add":
       return handleAddMoney(message, args);
@@ -342,6 +346,10 @@ export async function routeMessage(client: Client, message: Message, prefix: str
     case "item-info":
     case "item": {
       return handleItemInfo(message, args);
+    }
+    case "equip": {
+      const { handleEquip } = require("./commands/economy/equip");
+      return handleEquip(message, args);
     }
     default:
       const VALID_COMMANDS = [

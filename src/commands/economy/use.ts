@@ -1,6 +1,7 @@
 import { Message, TextChannel } from "discord.js";
 import { useItem } from "../../services/shopService";
 import { successEmbed, errorEmbed } from "../../utils/embed";
+import { getGuildConfig } from "../../services/guildConfigService";
 
 export async function handleUse(message: Message, args: string[]) {
     if (!message.guild || !message.member) return;
@@ -8,8 +9,9 @@ export async function handleUse(message: Message, args: string[]) {
     const itemName = args.join(" ");
 
     if (!itemName) {
+        const config = await getGuildConfig(message.guild.id);
         return message.reply({
-            embeds: [errorEmbed(message.author, "Invalid Usage", "Usage: `!use <item_name>`")]
+            embeds: [errorEmbed(message.author, "Invalid Usage", `Usage: \`${config.prefix}use <item_name>\``)]
         });
     }
 
@@ -29,12 +31,10 @@ export async function handleUse(message: Message, args: string[]) {
             .filter(r => r.type !== "CUSTOM_MESSAGE")
             .map(r => r.message);
 
-        // Send custom messages first (plain text)
         if (customMessages.length > 0) {
             await (message.channel as TextChannel).send(customMessages.join("\n"));
         }
 
-        // Send the embed with remaining effects
         const embed = successEmbed(
             message.author,
             `Used: ${item.name}`,

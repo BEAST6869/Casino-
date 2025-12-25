@@ -10,8 +10,10 @@ async function handleSetCurrency(message, args) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins or Bot Commanders only.")] });
         }
         const name = args.join(" ").trim();
-        if (!name)
-            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "`!setcurrency <name>`")] });
+        if (!name) {
+            const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+            return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `\`${config.prefix}setcurrency <name>\``)] });
+        }
         await (0, guildConfigService_1.updateGuildConfig)(message.guildId, { currencyName: name });
         return message.reply({ embeds: [(0, embed_1.successEmbed)(message.author, "Currency Updated", `Currency set to **${name}**`)] });
     }

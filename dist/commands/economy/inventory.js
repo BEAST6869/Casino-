@@ -27,7 +27,7 @@ async function handleInventory(message, args) {
             const emptyEmbed = new discord_js_1.EmbedBuilder()
                 .setTitle(`${eInv} ${targetUser.username}'s Inventory`)
                 .setColor(discord_js_1.Colors.Blue)
-                .setDescription("Your inventory is empty.\nCheck out the store with `!shop`!")
+                .setDescription(`Your inventory is empty.\nCheck out the store with \`${config.prefix}shop\`!`)
                 .setTimestamp();
             return message.reply({ embeds: [emptyEmbed] });
         }

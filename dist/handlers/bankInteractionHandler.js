@@ -115,7 +115,8 @@ async function handleButton(interaction) {
             break;
         }
         case "bank_deposit_withdraw": {
-            await interaction.reply({ content: "Use `!deposit <amount>` or `!withdraw <amount>` for basic banking.", ephemeral: true });
+            const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
+            await interaction.reply({ content: `Use \`${config.prefix}deposit <amount>\` or \`${config.prefix}withdraw <amount>\` for basic banking.`, ephemeral: true });
             break;
         }
         case "bank_main_btn": {

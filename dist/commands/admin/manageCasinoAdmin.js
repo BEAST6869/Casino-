@@ -9,6 +9,7 @@ exports.handleListCasinoAdmins = handleListCasinoAdmins;
 const discord_js_1 = require("discord.js");
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
+const guildConfigService_1 = require("../../services/guildConfigService");
 async function handleMakeCasinoAdmin(message, args) {
     const BOT_OWNER_ID = "1288340046449086567";
     if (message.author.id !== message.guild?.ownerId && message.author.id !== BOT_OWNER_ID) {
@@ -16,7 +17,8 @@ async function handleMakeCasinoAdmin(message, args) {
     }
     const targetUser = message.mentions.users.first();
     if (!targetUser) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Mention a user to promote.\nExample: `!make-casino-admin @user`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Mention a user to promote.\nExample: \`${config.prefix}make-casino-admin @user\``)] });
     }
     try {
         if (!message.guild)
@@ -48,7 +50,8 @@ async function handleRemoveCasinoAdmin(message, args) {
     }
     const targetUser = message.mentions.users.first();
     if (!targetUser) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Mention a user to demote.\nExample: `!remove-casino-admin @user`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Mention a user to demote.\nExample: \`${config.prefix}remove-casino-admin @user\``)] });
     }
     try {
         if (!message.guild)

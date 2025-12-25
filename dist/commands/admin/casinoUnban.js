@@ -7,13 +7,15 @@ exports.handleCasinoUnban = handleCasinoUnban;
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
 const permissionUtils_1 = require("../../utils/permissionUtils");
+const guildConfigService_1 = require("../../services/guildConfigService");
 async function handleCasinoUnban(message, args) {
     if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Administrator or Bot Commander required.")] });
     }
     const mention = args[0];
     if (!mention) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!casinounban @user`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}casinounban @user\``)] });
     }
     const discordId = mention.replace(/[<@!>]/g, "");
     try {

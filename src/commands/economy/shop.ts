@@ -29,7 +29,6 @@ function renderShopPage(items: any[], page: number, totalPages: number, currency
     .setFooter({ text: `Page ${page}/${totalPages} • Use buttons to buy` + "\u3000".repeat(25) });
 
   if (currentItems.length > 0) {
-    // Use fields instead of description for better width control
     currentItems.forEach((item, index) => {
       const itemNumber = (page - 1) * ITEMS_PER_PAGE + index + 1;
       const name = `${itemNumber}. ${item.name} — ${fmtCurrency(item.price, currencyEmoji)}`;
@@ -40,7 +39,6 @@ function renderShopPage(items: any[], page: number, totalPages: number, currency
     embed.setDescription("No items available.");
   }
 
-  // Row 1: Purchase Buttons (1-5)
   const buyRow = new ActionRowBuilder<ButtonBuilder>();
   currentItems.forEach((item, index) => {
     buyRow.addComponents(
@@ -69,7 +67,7 @@ export async function handleShop(message: Message, args: string[]) {
 
     if (sub === "buy") {
       const itemName = args.slice(1).join(" ");
-      if (!itemName) return message.reply("Usage: `!shop buy <item name>`");
+      if (!itemName) return message.reply(`Usage: \`${config.prefix}shop buy <item name>\``);
 
       try {
         await ensureUserAndWallet(message.author.id, message.guildId!, message.author.tag);
@@ -105,7 +103,6 @@ export async function handleShop(message: Message, args: string[]) {
     const allItems = await getShopItems(message.guildId!);
     if (allItems.length === 0) return message.reply({ embeds: [errorEmbed(message.author, "Shop Empty", "No items are currently for sale.")] });
 
-    // Sort items by price (lowest to highest)
     allItems.sort((a, b) => a.price - b.price);
 
     let currentPage = 1;

@@ -9,13 +9,13 @@ const guildConfigService_1 = require("../../services/guildConfigService");
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 async function handleCommandStatus(message, args) {
     const commandName = args[0]?.toLowerCase();
-    if (!commandName)
-        return message.reply("Usage: `!command-status <command>`");
     const guildId = message.guildId;
+    const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
+    if (!commandName)
+        return message.reply(`Usage: \`${config.prefix}command-status <command>\``);
     const userId = message.author.id;
     const channelId = message.channel.id;
     const member = message.member;
-    const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
     const trace = [];
     const isAdmin = member.permissions.has("Administrator");
     const isOwner = userId === message.guild?.ownerId;

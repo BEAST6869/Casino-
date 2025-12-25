@@ -14,7 +14,7 @@ async function handleDeposit(message, args) {
     const wallet = user.wallet;
     const amountStr = args[0];
     if (!amountStr) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", "Usage: `!dep <amount/all>`")] });
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Amount", `Usage: \`${config.prefix}dep <amount/all>\``)] });
     }
     const amount = (0, format_1.parseSmartAmount)(amountStr, user.wallet.balance);
     if (isNaN(amount) || amount <= 0) {

@@ -17,11 +17,12 @@ async function execute(message, args) {
     const guildId = message.guildId;
     if (!user || !guildId)
         return;
+    const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
     const subCommand = args[0]?.toLowerCase();
     if (subCommand === "repay") {
         const amountStr = args[1];
         if (!amountStr)
-            return message.reply("Usage: `!bank repay <amount>`");
+            return message.reply(`Usage: \`${config.prefix}bank repay <amount>\``);
         const userWallet = await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
         const amount = (0, format_1.parseSmartAmount)(amountStr, userWallet.wallet.balance);
         if (isNaN(amount) || amount <= 0)
@@ -35,15 +36,14 @@ async function execute(message, args) {
         }
     }
     const summary = await (0, bankingService_1.getFinancialSummary)(user.id, guildId);
-    const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
     const embed = new discord_js_1.EmbedBuilder()
-        .setTitle(`<: bankk: 1445689134181126167 > ${user.username} 's Financial Dashboard`)
+        .setTitle(`<:bankk:1445689134181126167> ${user.username}'s Financial Dashboard`)
         .setColor("#FFD700")
         .setThumbnail(user.displayAvatarURL())
         .setDescription(`Welcome to the ${config.currencyName} Bank. Manage your assets and liabilities here.`)
         .addFields({ name: "<:MoneyBag:1446970451606896781> Net Worth", value: `${config.currencyEmoji} ${summary.netWorth.toLocaleString()}`, inline: true }, { name: "<a:credits:1445689337172721716> Credit Score", value: `${summary.creditScore}`, inline: true }, {
         name: "<:OnLoan:1446971056865935381> Active Loans", value: summary.activeLoans.length > 0
-            ? `**${summary.activeLoans.length} Active**\n(Use \`!credit\` for details)`
+            ? `**${summary.activeLoans.length} Active**\n(Use \`${config.prefix}credit\` for details)`
             : "None", inline: true
     }, { name: "<:graph:1445689267861979197> Investments", value: `${summary.investments.length} Active`, inline: true })
         .setFooter({ text: "Use the buttons below to navigate." });
@@ -69,7 +69,7 @@ async function execute(message, args) {
         await message.reply({ embeds: [embed], components: [row] });
     }
     else {
-        await message.reply({ embeds: [embed], components: [row] });
+        await message.reply({ embeds: [embed], components: [row] }); // Logic seems duplicated for message/interaction support but keeping as is
     }
 }
 //# sourceMappingURL=bank.js.map

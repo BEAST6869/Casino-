@@ -106,7 +106,8 @@ async function routeMessage(client, message, prefix) {
         roul: "bet",
         bj: "blackjack",
         cockfight: "cockfight",
-        cf: "cockfight"
+        cf: "cockfight",
+        chicken: "chicken"
     }[command] ?? command);
     if (message.guildId) {
         const { checkCommandPermission } = require("./services/permissionService");
@@ -185,6 +186,12 @@ async function routeMessage(client, message, prefix) {
             return (0, slots_1.handleSlots)(message, args);
         case "cockfight":
             return (0, cockfight_1.handleCockFight)(message, args);
+        case "chicken":
+            const { handleChicken } = require("./commands/games/chicken");
+            return handleChicken(message, args);
+        case "feed":
+            const { handleFeed } = require("./commands/games/feed");
+            return handleFeed(message, args);
         case "add-money":
         case "admin-add":
             return (0, addMoney_1.handleAddMoney)(message, args);

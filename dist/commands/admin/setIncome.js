@@ -15,12 +15,13 @@ async function handleSetIncome(message, args) {
         if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins or Bot Commanders only.")] });
         }
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
         const cmd = (args[0] ?? "").toLowerCase();
         const field = (args[1] ?? "").toLowerCase();
         const raw = args[2];
         if (!cmd || !field || raw === undefined || !SUPPORTED.includes(cmd)) {
             return message.reply({
-                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!setincome < work | beg | crime | slut > <min|max|cooldown|success|penalty> <value>`")]
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}setincome < work | beg | crime | slut > <min|max|cooldown|success|penalty> <value>\``)]
             });
         }
         const val = (0, format_1.parseSmartAmount)(raw);
@@ -58,7 +59,7 @@ async function handleSetIncome(message, args) {
         }
         const guildId = message.guildId;
         const commandKey = cmd;
-        const up = await prisma_1.default.incomeConfig.upsert({
+        await prisma_1.default.incomeConfig.upsert({
             where: { guildId_commandKey: { guildId, commandKey } },
             create: {
                 guildId,
@@ -71,7 +72,6 @@ async function handleSetIncome(message, args) {
             },
             update: updates
         });
-        const config = await (0, guildConfigService_1.getGuildConfig)(guildId);
         const emoji = config.currencyEmoji;
         const formattedUpdates = Object.entries(updates).map(([k, v]) => {
             if (k === "minPay" || k === "maxPay")

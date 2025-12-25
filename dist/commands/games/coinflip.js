@@ -10,12 +10,13 @@ const embed_1 = require("../../utils/embed");
 const cooldown_1 = require("../../utils/cooldown");
 const format_2 = require("../../utils/format");
 async function handleCoinflip(message, args) {
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const amountStr = args[0];
     const choiceRaw = (args[1] || "").toLowerCase();
     if (!amountStr || !choiceRaw) {
         return message.reply({
             embeds: [
-                (0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!cf <amount> <heads|tails>`"),
+                (0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}cf <amount> <heads|tails>\``),
             ],
         });
     }
@@ -28,7 +29,6 @@ async function handleCoinflip(message, args) {
             ],
         });
     }
-    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const emoji = config.currencyEmoji;
     let choice;
     if (["heads", "head", "h"].includes(choiceRaw))

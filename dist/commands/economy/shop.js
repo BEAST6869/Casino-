@@ -17,7 +17,6 @@ function renderShopPage(items, page, totalPages, currencyEmoji) {
         .setColor(discord_js_1.Colors.DarkGrey)
         .setFooter({ text: `Page ${page}/${totalPages} • Use buttons to buy` + "\u3000".repeat(25) });
     if (currentItems.length > 0) {
-        // Use fields instead of description for better width control
         currentItems.forEach((item, index) => {
             const itemNumber = (page - 1) * ITEMS_PER_PAGE + index + 1;
             const name = `${itemNumber}. ${item.name} — ${(0, format_1.fmtCurrency)(item.price, currencyEmoji)}`;
@@ -28,7 +27,6 @@ function renderShopPage(items, page, totalPages, currencyEmoji) {
     else {
         embed.setDescription("No items available.");
     }
-    // Row 1: Purchase Buttons (1-5)
     const buyRow = new discord_js_1.ActionRowBuilder();
     currentItems.forEach((item, index) => {
         buyRow.addComponents(new discord_js_1.ButtonBuilder()
@@ -49,7 +47,7 @@ async function handleShop(message, args) {
         if (sub === "buy") {
             const itemName = args.slice(1).join(" ");
             if (!itemName)
-                return message.reply("Usage: `!shop buy <item name>`");
+                return message.reply(`Usage: \`${config.prefix}shop buy <item name>\``);
             try {
                 await (0, walletService_1.ensureUserAndWallet)(message.author.id, message.guildId, message.author.tag);
                 const item = await (0, shopService_1.buyItem)(message.guildId, message.author.id, itemName);
@@ -85,7 +83,6 @@ async function handleShop(message, args) {
         const allItems = await (0, shopService_1.getShopItems)(message.guildId);
         if (allItems.length === 0)
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Shop Empty", "No items are currently for sale.")] });
-        // Sort items by price (lowest to highest)
         allItems.sort((a, b) => a.price - b.price);
         let currentPage = 1;
         const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);

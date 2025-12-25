@@ -8,15 +8,17 @@ const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
 const discordLogger_1 = require("../../utils/discordLogger");
 const permissionUtils_1 = require("../../utils/permissionUtils");
+const guildConfigService_1 = require("../../services/guildConfigService");
 async function handleResetEconomy(message, args) {
     try {
         if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
             return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Admins or Bot Commanders only.")] });
         }
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
         const token = args[0]?.toLowerCase();
         if (token !== "confirm") {
             return message.reply({
-                embeds: [(0, embed_1.errorEmbed)(message.author, "Confirmation Required", "This will wipe wallets, banks, transactions and audits. Run `!reseteconomy confirm` to proceed.")]
+                embeds: [(0, embed_1.errorEmbed)(message.author, "Confirmation Required", `This will wipe wallets, banks, transactions and audits. Run \`${config.prefix}reseteconomy confirm\` to proceed.`)]
             });
         }
         try {

@@ -5,6 +5,7 @@ const roleIncomeService_1 = require("../../services/roleIncomeService");
 const embed_1 = require("../../utils/embed");
 const format_1 = require("../../utils/format");
 const permissionUtils_1 = require("../../utils/permissionUtils");
+const guildConfigService_1 = require("../../services/guildConfigService");
 async function handleSetRoleIncome(message, args) {
     if (!message.guild)
         return;
@@ -16,7 +17,8 @@ async function handleSetRoleIncome(message, args) {
     const timeArgs = args.slice(2).join(" ");
     const cooldown = timeArgs ? (0, format_1.parseDuration)(timeArgs) : 86400;
     if (!role || isNaN(amount) || cooldown === null) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!set-role-income @Role <amount> [cooldown]`\nExample: `!set-role-income @VIP 1000 1d 12h`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}set-role-income @Role <amount> [cooldown]\`\nExample: \`${config.prefix}set-role-income @VIP 1000 1d 12h\``)] });
     }
     await (0, roleIncomeService_1.setRoleIncome)(message.guild.id, role.id, amount, cooldown);
     return message.reply({

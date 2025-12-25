@@ -9,18 +9,18 @@ async function handleSetGameCooldown(message, args) {
     if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "You need Administrator or Bot Commander permissions.")] });
     }
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     const game = args[0]?.toLowerCase();
     const timeInput = args.slice(1).join(" ");
     if (!game || !timeInput) {
         return message.reply({
-            embeds: [(0, embed_1.errorEmbed)(message.author, "Usage", "`!set-game-cooldown <game> <time>`\nExample: `!game-cd slots 30s` or `!game-cd bj 1h 30m`")]
+            embeds: [(0, embed_1.errorEmbed)(message.author, "Usage", `\`${config.prefix}set-game-cooldown <game> <time>\`\nExample: \`${config.prefix}game-cd slots 30s\` or \`${config.prefix}game-cd bj 1h 30m\``)]
         });
     }
     const seconds = (0, format_1.parseDuration)(timeInput);
     if (seconds === null || seconds < 0) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Time", "Please provide a valid duration (e.g. `30s`, `1m`, `1h`).")] });
     }
-    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     let cooldowns = config.gameCooldowns || {};
     if (typeof cooldowns !== "object")
         cooldowns = {};

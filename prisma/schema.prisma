@@ -246,6 +246,9 @@ model GuildConfig {
   robImmuneRoles String[] @default([])
   
   minBet         Int      @default(100)
+  cockfightBetTime Int    @default(60)
+  chickenTrainBaseCost Int @default(500)
+  chickenTrainMultiplier Float @default(0.5)
 
   // Banking System Configs
   loanInterestRate Int      @default(5)

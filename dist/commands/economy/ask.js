@@ -11,7 +11,7 @@ async function handleAsk(message, args) {
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guild.id);
     if (!config.enableAskCommand) {
         return message.reply({
-            embeds: [(0, embed_1.errorEmbed)(message.author, "Feature Disabled", "The `!ask` command is currently disabled on this server.")]
+            embeds: [(0, embed_1.errorEmbed)(message.author, "Feature Disabled", `The \`${config.prefix}ask\` command is currently disabled on this server.`)]
         });
     }
     const targetUser = message.mentions.users.first();

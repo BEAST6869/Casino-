@@ -7,6 +7,7 @@ exports.handleCasinoBan = handleCasinoBan;
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const embed_1 = require("../../utils/embed");
 const permissionUtils_1 = require("../../utils/permissionUtils");
+const guildConfigService_1 = require("../../services/guildConfigService");
 async function handleCasinoBan(message, args) {
     if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "No Permission", "Administrator or Bot Commander required.")] });
@@ -14,7 +15,8 @@ async function handleCasinoBan(message, args) {
     const mention = args[0];
     const reason = args.slice(1).join(" ") || "No reason provided.";
     if (!mention) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!casinoban @user <reason>`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}casinoban @user <reason>\``)] });
     }
     const discordId = mention.replace(/[<@!>]/g, "");
     const targetMember = await message.guild?.members.fetch(discordId).catch(() => null);
@@ -40,7 +42,7 @@ async function handleCasinoBan(message, args) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "You cannot ban this user due to privilege hierarchy.")] });
     }
     try {
-        const user = await prisma_1.default.user.upsert({
+        await prisma_1.default.user.upsert({
             where: { discordId_guildId: { discordId, guildId: message.guildId } },
             create: { discordId, guildId: message.guildId, username: "Unknown", isBanned: true },
             update: { isBanned: true }
@@ -49,17 +51,17 @@ async function handleCasinoBan(message, args) {
         await logToChannel(message.client, {
             guild: message.guild,
             type: "MODERATION",
-            title: "User Banned",
-            description: `**User:** <@${discordId}>\n**Reason:** ${reason}\n**Banned By:** ${message.author.tag}`,
+            title: "User Banned (Casino)",
+            description: `**User:** <@${discordId}>\n**Banned By:** ${message.author.tag}\n**Reason:** ${reason}`,
             color: 0xFF0000
         });
         return message.reply({
             embeds: [(0, embed_1.successEmbed)(message.author, "User Banned", `🚫 **<@${discordId}>** has been banned from the casino.\nReason: ${reason}`)]
         });
     }
-    catch (error) {
-        console.error(error);
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Error", "Failed to ban user.")] });
+    catch (e) {
+        console.error(e);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Database Error", "Failed to ban user.")] });
     }
 }
 //# sourceMappingURL=casinoBan.js.map

@@ -9,11 +9,11 @@ const embed_1 = require("../../utils/embed");
 function formatEffectDescription(effect) {
     switch (effect.type) {
         case "ROLE_TEMPORARY":
-            return ` **Temporary Role**: <@&${effect.roleId}> for ${formatDuration(effect.duration)}`;
+            return ` **Temporary Role**: <@&${effect.roleId}> for ${(0, format_1.formatDuration)(effect.duration)}`;
         case "ROLE_PERMANENT":
             return ` **Permanent Role**: <@&${effect.roleId}>`;
         case "XP_MULTIPLIER":
-            return ` **XP Boost**: ${effect.multiplier}x multiplier for ${formatDuration(effect.duration)}`;
+            return ` **XP Boost**: ${effect.multiplier}x multiplier for ${(0, format_1.formatDuration)(effect.duration)}`;
         case "LEVEL_BOOST":
             return ` **Level Up**: Instantly gain ${effect.levels} level(s)`;
         case "MONEY":
@@ -24,21 +24,12 @@ function formatEffectDescription(effect) {
             return " Unknown effect";
     }
 }
-function formatDuration(seconds) {
-    if (seconds < 60)
-        return `${seconds} second(s)`;
-    if (seconds < 3600)
-        return `${Math.floor(seconds / 60)} minute(s)`;
-    if (seconds < 86400)
-        return `${Math.floor(seconds / 3600)} hour(s)`;
-    return `${Math.floor(seconds / 86400)} day(s)`;
-}
 async function handleItemInfo(message, args) {
     try {
         const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
         const emoji = config.currencyEmoji;
         if (args.length === 0) {
-            return message.reply("Usage: `!iteminfo <item name>`");
+            return message.reply(`Usage: \`${config.prefix}iteminfo <item name>\``);
         }
         const itemName = args.join(" ");
         const item = await (0, shopService_1.getShopItemByName)(message.guildId, itemName);
@@ -59,7 +50,7 @@ async function handleItemInfo(message, args) {
         else {
             embed.addFields({ name: "<:sparks:1449708086099968031> Effects", value: "*No special effects*", inline: false });
         }
-        embed.setFooter({ text: `Use !shop buy ${item.name} to purchase` });
+        embed.setFooter({ text: `Use ${config.prefix}shop buy ${item.name} to purchase` });
         return message.reply({ embeds: [embed] });
     }
     catch (err) {

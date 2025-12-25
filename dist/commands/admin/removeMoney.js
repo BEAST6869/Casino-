@@ -16,13 +16,15 @@ async function handleRemoveMoney(message, args) {
     if (!message.member || !(await (0, permissionUtils_1.canExecuteAdminCommand)(message, message.member))) {
         return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Access Denied", "You need Administrator or Bot Commander permissions.")] });
     }
+    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+    const emoji = config.currencyEmoji;
     const targetUser = message.mentions.users.first();
     const amountArg = args[1];
     const typeArg = args[2]?.toLowerCase() || "wallet";
     const type = typeArg === "bank" ? "bank" : "wallet";
     if (!targetUser) {
         return message.reply({
-            embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!removemoney @user <amount|all|%> [wallet/bank]`")]
+            embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}removemoney @user <amount|all|%> [wallet/bank]\``)]
         });
     }
     if (!amountArg) {
@@ -30,8 +32,6 @@ async function handleRemoveMoney(message, args) {
             embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Please specify an amount, percentage, or 'all'.")]
         });
     }
-    const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
-    const emoji = config.currencyEmoji;
     const isAllAmount = /^(all|everyone)$/i.test(amountArg);
     const isPercentage = amountArg.includes("%");
     let value = 0;

@@ -24,7 +24,7 @@ async function handleViewCreditTiers(message) {
         .setTitle("<a:credits:1445689337172721716> Credit Configuration Tiers")
         .setDescription(desc)
         .setColor(0x00AAFF)
-        .setFooter({ text: `Use !delete-credit-tier <score> to remove one.` });
+        .setFooter({ text: `Use ${config.prefix}delete-credit-tier <score> to remove one.` });
     return message.reply({ embeds: [embed] });
 }
 async function handleDeleteCreditTier(message, args) {
@@ -33,7 +33,8 @@ async function handleDeleteCreditTier(message, args) {
     }
     const score = parseInt(args[0]);
     if (isNaN(score)) {
-        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", "Usage: `!delete-credit-tier <minScore>`")] });
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
+        return message.reply({ embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Usage", `Usage: \`${config.prefix}delete-credit-tier <minScore>\``)] });
     }
     const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
     let tiers = config.creditConfig || [];

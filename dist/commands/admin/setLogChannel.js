@@ -11,8 +11,9 @@ async function handleSetLogChannel(message, args) {
     }
     const channel = message.mentions.channels.first() || message.guild?.channels.cache.get(args[0]);
     if (!channel || channel.type !== discord_js_1.ChannelType.GuildText) {
+        const config = await (0, guildConfigService_1.getGuildConfig)(message.guildId);
         return message.reply({
-            embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Channel", "Please mention a valid text channel or provide its ID.\nUsage: `!set-log-channel #logs`")]
+            embeds: [(0, embed_1.errorEmbed)(message.author, "Invalid Channel", `Please mention a valid text channel or provide its ID.\nUsage: \`${config.prefix}set-log-channel #logs\``)]
         });
     }
     await (0, guildConfigService_1.updateGuildConfig)(message.guildId, {
