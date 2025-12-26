@@ -249,6 +249,7 @@ model GuildConfig {
   cockfightBetTime Int    @default(60)
   chickenTrainBaseCost Int @default(500)
   chickenTrainMultiplier Float @default(0.5)
+  chickenHealCost Int      @default(500)
 
   // Banking System Configs
   loanInterestRate Int      @default(5)

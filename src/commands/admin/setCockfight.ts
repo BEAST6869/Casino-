@@ -38,8 +38,19 @@ export async function handleSetCockfight(message: Message, args: string[]) {
         return message.reply({ embeds: [successEmbed(message.author, "Configuration Updated", `Training Cost updated:\nBase: **${baseCost}**\nMultiplier: **${mult}**`)] });
     }
 
+    if (sub === "heal") {
+        const costStr = args[1];
+        if (!costStr) return message.reply({ embeds: [errorEmbed(message.author, "Missing Argument", "Usage: `!setcockfight heal <cost>`")] });
+
+        const cost = parseInt(costStr);
+        if (isNaN(cost) || cost < 0) return message.reply({ embeds: [errorEmbed(message.author, "Invalid Cost", "Cost must be a positive number.")] });
+
+        await updateGuildConfig(message.guildId!, { chickenHealCost: cost } as any);
+        return message.reply({ embeds: [successEmbed(message.author, "Configuration Updated", `Chicken heal cost set to **${cost}** coins.`)] });
+    }
+
     if (sub !== "timer") {
-        return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage:\n`!setcockfight timer <duration>`\n`!setcockfight training <base> <mult>`")] });
+        return message.reply({ embeds: [errorEmbed(message.author, "Invalid Usage", "Usage:\n`!setcockfight timer <duration>`\n`!setcockfight training <base> <mult>`\n`!setcockfight heal <cost>`")] });
     }
 
     const durationStr = args[1]?.toLowerCase();

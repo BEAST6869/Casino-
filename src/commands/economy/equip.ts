@@ -37,7 +37,7 @@ export async function handleEquip(message: Message, args: string[]) {
     }
 
     // 3. Check if Equippable (Allow list for now)
-    const validEquips = ["spurs", "armor", "shield", "helmet", "gloves"];
+    const validEquips = ["spur", "armor", "armour", "shield", "helmet", "glove", "boot", "sword"];
     if (!validEquips.some(e => shopItem.name.toLowerCase().includes(e))) {
         return message.reply({ embeds: [errorEmbed(user, "Not Equippable", "This item cannot be equipped to a chicken.")] });
     }

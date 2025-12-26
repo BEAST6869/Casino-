@@ -78,6 +78,9 @@ export async function handleCockFight(message: Message, args: string[]) {
             embeds: [errorEmbed(message.author, "Busy", `Your chicken is training! Come back <t:${endTime}:R>.`)]
         });
     }
+    if (challengerMeta.injured) {
+        return message.reply({ embeds: [errorEmbed(message.author, "Injured", "Your chicken is injured! Heal it via `!chicken`.")] });
+    }
 
     const invTarget = await prisma.inventory.findUnique({
         where: { userId_shopItemId: { userId: (await getUserId(targetUser.id, message.guild.id)), shopItemId: shopItem.id } }
@@ -93,6 +96,9 @@ export async function handleCockFight(message: Message, args: string[]) {
         return message.reply({
             embeds: [errorEmbed(message.author, "Busy", `**${targetUser.username}**'s chicken is training! Ends <t:${endTime}:R>.`)]
         });
+    }
+    if (targetMeta.injured) {
+        return message.reply({ embeds: [errorEmbed(message.author, "Injured", `**${targetUser.username}**'s chicken is injured!`)] });
     }
 
     const challengerWallet = await prisma.wallet.findUnique({ where: { userId: (await getUserId(message.author.id, message.guild.id)) } });
@@ -352,13 +358,39 @@ async function runCockFight(
         const p2Meta = (p2Inv?.meta as any) || {};
         const p2Level = p2Meta.level || 0;
 
-        const p1Score = (10 + (p1Level * 2)) * (1 + ((p1Meta.strength || 0) * 0.1));
-        const p1Agility = p1Meta.agility || 0;
-        const p1Defense = p1Meta.defense || 0;
+        // --- EQUIPMENT BONUSES ---
+        const getEquipBonus = (itemName: string | undefined): { str: number, agi: number, def: number } => {
+            if (!itemName) return { str: 0, agi: 0, def: 0 };
+            const name = itemName.toLowerCase();
+            let bonus = { str: 0, agi: 0, def: 0 };
 
-        const p2Score = (10 + (p2Level * 2)) * (1 + ((p2Meta.strength || 0) * 0.1));
-        const p2Agility = p2Meta.agility || 0;
-        const p2Defense = p2Meta.defense || 0;
+            if (name.includes("spur")) bonus.str += 2; // +Strength (Win Chance)
+            if (name.includes("sword")) bonus.str += 2;
+
+            if (name.includes("armor")) bonus.def += 2; // +Defense (Survival)
+            if (name.includes("shield")) bonus.def += 2;
+            if (name.includes("helmet")) bonus.def += 1;
+
+            if (name.includes("glove")) bonus.agi += 2; // +Agility (Dodge)
+            if (name.includes("boot")) bonus.agi += 2;
+
+            return bonus;
+        };
+
+        const p1Equip = getEquipBonus(p1Meta.equippedItemName);
+        const p2Equip = getEquipBonus(p2Meta.equippedItemName);
+
+        // Apply Bonuses
+        const p1Str = (p1Meta.strength || 0) + p1Equip.str;
+        const p1Agi = (p1Meta.agility || 0) + p1Equip.agi;
+        const p1Def = (p1Meta.defense || 0) + p1Equip.def;
+
+        const p2Str = (p2Meta.strength || 0) + p2Equip.str;
+        const p2Agi = (p2Meta.agility || 0) + p2Equip.agi;
+        const p2Def = (p2Meta.defense || 0) + p2Equip.def;
+
+        const p1Score = (10 + (p1Level * 2)) * (1 + (p1Str * 0.1));
+        const p2Score = (10 + (p2Level * 2)) * (1 + (p2Str * 0.1));
 
         const totalScore = p1Score + p2Score;
         const p1Chance = p1Score / totalScore;
@@ -393,7 +425,8 @@ async function runCockFight(
             const isP1Attacking = Math.random() > 0.5;
             const attacker = isP1Attacking ? p1.username : p2.username;
             const defender = isP1Attacking ? p2.username : p1.username;
-            const defenderDodgeChance = (isP1Attacking ? p2Agility : p1Agility) * 0.02; // 2% per agility
+            const defenderDodgeChance = (isP1Attacking ? p2Agi : p1Agi) * 0.02; // 2% per agility
+            const attackerCritChance = (isP1Attacking ? p1Str : p2Str) * 0.01; // 1% per strength optional flavor
 
             let moveText = "";
             const moveRoll = Math.random();
@@ -459,25 +492,55 @@ async function runCockFight(
             requiredXp = (newLevel + 1) * 100;
         }
 
+        // --- UPDATE WINNER (AND BREAK ITEM) ---
         payoutOps.push(prisma.inventory.update({
             where: { userId_shopItemId: { userId: wId, shopItemId: chickenItemId } },
             data: {
                 meta: {
                     level: newLevel,
                     wins: newWins,
-                    xp: newXp
+                    xp: newXp,
+                    strength: (winnerIsP1 ? p1Meta.strength : p2Meta.strength) || 0,
+                    agility: (winnerIsP1 ? p1Meta.agility : p2Meta.agility) || 0,
+                    defense: (winnerIsP1 ? p1Meta.defense : p2Meta.defense) || 0,
+                    name: (winnerIsP1 ? p1Meta.name : p2Meta.name),
+                    // BREAK ITEM: Remove equipped data
+                    equippedItem: null,
+                    equippedItemName: null,
+                    training: (winnerIsP1 ? p1Meta.training : p2Meta.training) // Should be null anyway
                 }
             }
         }));
 
         const lId = await getUserId(loserUser.id, guildId);
-        const loserDefense = winnerIsP1 ? p2Defense : p1Defense;
-        const saveChance = Math.min(loserDefense * 0.05, 0.50); // Cap at 50%
-        const isSaved = Math.random() < saveChance;
+        // DEATH MECHANIC UPDATE:
+        // 5% Chance of Permadeath. 95% Chance of Injury.
+        // Equipment is ALREADY broken in the "Saved" case calculation above? Wait, we need to redo that.
+        // We'll treat "Saved" as "Injured".
 
-        if (isSaved) {
-            // Saved! No delete.
+        const DEATH_CHANCE = 0.05; // 5%
+        const isDead = Math.random() < DEATH_CHANCE;
+
+        if (!isDead) {
+            // INJURED STATE (95%)
+            const loserMeta = winnerIsP1 ? p2Meta : p1Meta;
+            const newLoserMeta = JSON.parse(JSON.stringify(loserMeta));
+
+            // Break Item
+            delete newLoserMeta.equippedItem;
+            delete newLoserMeta.equippedItemName;
+
+            // Apply Injury (2 Hours)
+            newLoserMeta.injured = {
+                endTime: Date.now() + (2 * 60 * 60 * 1000)
+            };
+
+            payoutOps.push(prisma.inventory.update({
+                where: { userId_shopItemId: { userId: lId, shopItemId: chickenItemId } },
+                data: { meta: newLoserMeta }
+            }));
         } else {
+            // PERMADEATH (5%)
             payoutOps.push(prisma.inventory.delete({
                 where: { userId_shopItemId: { userId: lId, shopItemId: chickenItemId } }
             }));
@@ -485,9 +548,9 @@ async function runCockFight(
 
         await prisma.$transaction(payoutOps);
 
-        const deathMessage = isSaved
-            ? `🛡️ **SAVED!** ${loserUser.username}'s chicken survives due to high Defense!`
-            : `${EMOJI_RIP} ${loserUser.username}'s chicken has died.`;
+        const deathMessage = !isDead
+            ? `<:clinic:1453972244610154507> **INJURED!** ${loserUser.username}'s chicken survives but is hospitalized for 2 hours.\n<:alert_sign:1451625691664875610> **Equipment Broken!**`
+            : `${EMOJI_RIP} **CRITICAL FAILURE!** ${loserUser.username}'s chicken has died (Permadeath).`;
 
         const EMOJI_XP = "<:xpfull:1451636569982111765>";
         const EMOJI_XP_EMPTY = "<:xpempty:1451642829427314822>";
